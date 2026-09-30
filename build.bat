@@ -1,0 +1,28 @@
+@echo off
+set "PATH=%~dp0w64devkit\bin;%PATH%"
+
+echo ========================================================
+echo  Compiling Railway Ticket Reservation System
+echo ========================================================
+
+if not exist "%~dp0sqlite3.o" (
+    echo [1/2] Compiling sqlite3.c to sqlite3.o
+    gcc -O2 -c "%~dp0sqlite3.c" -o "%~dp0sqlite3.o"
+    if errorlevel 1 (
+        echo [ERROR] Failed to compile sqlite3.c
+        exit /b 1
+    )
+) else (
+    echo [1/2] Using existing sqlite3.o
+)
+
+echo [2/2] Compiling C++ source files with g++
+g++ -std=c++11 -Wall -Wextra "%~dp0main.cpp" "%~dp0utils.cpp" "%~dp0database.cpp" "%~dp0railway.cpp" "%~dp0sqlite3.o" -o "%~dp0railway.exe"
+if errorlevel 1 (
+    echo [ERROR] Build failed!
+    exit /b 1
+)
+
+echo ========================================================
+echo  BUILD SUCCESSFUL: railway.exe generated!
+echo ========================================================

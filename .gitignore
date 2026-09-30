@@ -1,0 +1,10 @@
+# Binaries and object files
+*.exe
+*.o
+*.obj
+
+# Local toolchain
+w64devkit/
+
+# Test output
+test_output.txt

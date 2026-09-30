@@ -38,7 +38,7 @@ jobs:
       - name: Compile Application
         run: |
           gcc -O2 -c sqlite3.c -o sqlite3.o
-          g++ -std=c++11 -Wall -Wextra main.cpp sqlite3.o -o railway.exe
+          g++ -std=c++11 -Wall -Wextra main.cpp sqlite3.o -lws2_32 -o railway.exe
 
       - name: Test Run
         run: echo 0 | .\railway.exe

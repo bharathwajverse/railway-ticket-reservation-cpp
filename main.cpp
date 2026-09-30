@@ -382,6 +382,8 @@ bool openDatabase(sqlite3*& db, const char* fileName) {
         cout << "[Database Error] Cannot open database: " << sqlite3_errmsg(db) << "\n";
         return false;
     }
+    // Performance and data integrity optimization
+    sqlite3_exec(db, "PRAGMA foreign_keys = ON; PRAGMA synchronous = NORMAL;", NULL, NULL, NULL);
     return true;
 }
 

@@ -1,0 +1,1163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Railway Ticket Reservation System - Modern Dashboard</title>
+  <style>
+    :root {
+      --primary: #1e3a8a;
+      --primary-light: #3b82f6;
+      --primary-dark: #0f172a;
+      --accent: #f59e0b;
+      --accent-hover: #d97706;
+      --bg: #0b0f19;
+      --card-bg: #151d30;
+      --card-border: #1e293b;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --success: #10b981;
+      --danger: #ef4444;
+      --warning: #f59e0b;
+      --radius: 12px;
+      --shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.5);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Header & Navigation */
+    header {
+      background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%);
+      border-bottom: 1px solid var(--card-border);
+      padding: 1.25rem 2rem;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+    }
+
+    .header-content {
+      max-width: 1280px;
+      margin: 0 auto;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .brand-icon {
+      font-size: 2rem;
+      background: rgba(255, 255, 255, 0.1);
+      padding: 0.5rem;
+      border-radius: var(--radius);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+    }
+
+    .brand-text h1 {
+      font-size: 1.35rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      color: #ffffff;
+    }
+
+    .brand-text p {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    .status-badge {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: rgba(16, 185, 129, 0.15);
+      color: #34d399;
+      border: 1px solid rgba(52, 211, 153, 0.3);
+      padding: 0.4rem 0.85rem;
+      border-radius: 9999px;
+      font-size: 0.8rem;
+      font-weight: 600;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      background-color: var(--success);
+      border-radius: 50%;
+      box-shadow: 0 0 10px var(--success);
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.5; transform: scale(0.85); }
+    }
+
+    /* Tabs */
+    .nav-tabs {
+      max-width: 1280px;
+      margin: 1.5rem auto 0;
+      padding: 0 1.5rem;
+      display: flex;
+      gap: 0.5rem;
+      overflow-x: auto;
+    }
+
+    .tab-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      padding: 0.75rem 1.25rem;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      border-radius: var(--radius);
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .tab-btn:hover {
+      color: var(--text-main);
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .tab-btn.active {
+      color: #ffffff;
+      background: var(--primary-light);
+      box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);
+    }
+
+    /* Main Container */
+    main {
+      max-width: 1280px;
+      width: 100%;
+      margin: 1.5rem auto 3rem;
+      padding: 0 1.5rem;
+      flex: 1;
+    }
+
+    .tab-pane {
+      display: none;
+    }
+
+    .tab-pane.active {
+      display: block;
+      animation: fadeIn 0.3s ease-out;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Cards */
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius);
+      padding: 1.5rem;
+      box-shadow: var(--shadow);
+      margin-bottom: 1.5rem;
+    }
+
+    .card-title {
+      font-size: 1.25rem;
+      font-weight: 700;
+      margin-bottom: 1.25rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      border-bottom: 1px solid var(--card-border);
+      padding-bottom: 0.75rem;
+    }
+
+    /* Forms */
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 1.25rem;
+      margin-bottom: 1.25rem;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+    }
+
+    .form-group label {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--text-muted);
+    }
+
+    .form-control {
+      background: #0d1322;
+      border: 1px solid var(--card-border);
+      color: var(--text-main);
+      padding: 0.65rem 0.9rem;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      transition: border-color 0.2s;
+    }
+
+    .form-control:focus {
+      outline: none;
+      border-color: var(--primary-light);
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+    }
+
+    .btn {
+      background: var(--primary-light);
+      color: #ffffff;
+      border: none;
+      padding: 0.75rem 1.5rem;
+      font-size: 0.95rem;
+      font-weight: 600;
+      border-radius: 8px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      transition: all 0.2s ease;
+    }
+
+    .btn:hover {
+      background: #2563eb;
+      transform: translateY(-1px);
+    }
+
+    .btn-secondary {
+      background: #334155;
+    }
+    .btn-secondary:hover {
+      background: #475569;
+    }
+
+    .btn-danger {
+      background: var(--danger);
+    }
+    .btn-danger:hover {
+      background: #dc2626;
+    }
+
+    .btn-success {
+      background: var(--success);
+    }
+    .btn-success:hover {
+      background: #059669;
+    }
+
+    /* Train Cards */
+    .trains-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+      gap: 1.25rem;
+    }
+
+    .train-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius);
+      padding: 1.25rem;
+      transition: transform 0.2s, border-color 0.2s;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .train-card:hover {
+      transform: translateY(-3px);
+      border-color: var(--primary-light);
+    }
+
+    .train-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 0.75rem;
+    }
+
+    .train-name {
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: #ffffff;
+    }
+
+    .train-no {
+      font-size: 0.8rem;
+      background: rgba(59, 130, 246, 0.2);
+      color: #93c5fd;
+      padding: 0.2rem 0.5rem;
+      border-radius: 6px;
+      font-family: monospace;
+    }
+
+    .route-info {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      margin-bottom: 1rem;
+    }
+
+    .train-stats {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-top: 0.75rem;
+      border-top: 1px solid rgba(255, 255, 255, 0.05);
+      font-size: 0.9rem;
+    }
+
+    .badge-seats {
+      font-weight: 700;
+      padding: 0.25rem 0.6rem;
+      border-radius: 6px;
+      font-size: 0.8rem;
+    }
+
+    .seats-available {
+      background: rgba(16, 185, 129, 0.2);
+      color: #34d399;
+    }
+
+    .seats-full {
+      background: rgba(239, 68, 68, 0.2);
+      color: #f87171;
+    }
+
+    /* Seat Layout Map */
+    .seat-map-container {
+      background: #0d1322;
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius);
+      padding: 1.5rem;
+      margin: 1.25rem 0;
+    }
+
+    .seat-legend {
+      display: flex;
+      gap: 1.5rem;
+      margin-bottom: 1rem;
+      font-size: 0.85rem;
+      flex-wrap: wrap;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .legend-box {
+      width: 18px;
+      height: 18px;
+      border-radius: 4px;
+    }
+
+    .box-available { background: #10b981; }
+    .box-booked { background: #ef4444; }
+    .box-selected { background: #3b82f6; box-shadow: 0 0 8px #3b82f6; }
+
+    .seat-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 0.6rem;
+      max-width: 480px;
+      margin: 0 auto;
+      padding: 1rem;
+      background: rgba(255, 255, 255, 0.02);
+      border-radius: 8px;
+    }
+
+    .seat-btn {
+      padding: 0.6rem 0.4rem;
+      border: none;
+      border-radius: 6px;
+      font-weight: 700;
+      font-size: 0.8rem;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      text-align: center;
+    }
+
+    .seat-btn.available {
+      background: #065f46;
+      color: #a7f3d0;
+    }
+    .seat-btn.available:hover {
+      background: #10b981;
+      color: #ffffff;
+      transform: scale(1.06);
+    }
+
+    .seat-btn.booked {
+      background: #451a1a;
+      color: #fca5a5;
+      cursor: not-allowed;
+      opacity: 0.6;
+    }
+
+    .seat-btn.selected {
+      background: #2563eb !important;
+      color: #ffffff !important;
+      box-shadow: 0 0 10px rgba(59, 130, 246, 0.8);
+      transform: scale(1.08);
+    }
+
+    /* Fare Breakdown Box */
+    .fare-box {
+      background: linear-gradient(135deg, rgba(30, 58, 138, 0.2) 0%, rgba(15, 23, 42, 0.4) 100%);
+      border: 1px solid rgba(59, 130, 246, 0.3);
+      border-radius: var(--radius);
+      padding: 1.25rem;
+      margin: 1.25rem 0;
+    }
+
+    .fare-row {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 0.5rem;
+      font-size: 0.9rem;
+    }
+
+    .fare-row.total {
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+      padding-top: 0.75rem;
+      margin-top: 0.75rem;
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: var(--accent);
+    }
+
+    .concession-badge {
+      display: inline-block;
+      font-size: 0.75rem;
+      padding: 0.2rem 0.5rem;
+      border-radius: 4px;
+      font-weight: 600;
+      background: rgba(245, 158, 11, 0.2);
+      color: #fbbf24;
+      border: 1px solid rgba(245, 158, 11, 0.3);
+    }
+
+    /* Analytics Cards */
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1.25rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .stat-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius);
+      padding: 1.25rem;
+      text-align: center;
+    }
+
+    .stat-value {
+      font-size: 2rem;
+      font-weight: 800;
+      color: #ffffff;
+      margin: 0.5rem 0 0.25rem;
+    }
+
+    .stat-label {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    /* Manifest Table */
+    .table-container {
+      overflow-x: auto;
+      border-radius: var(--radius);
+      border: 1px solid var(--card-border);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+      font-size: 0.9rem;
+    }
+
+    th {
+      background: #0f172a;
+      padding: 0.85rem 1rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      border-bottom: 1px solid var(--card-border);
+    }
+
+    td {
+      padding: 0.85rem 1rem;
+      border-bottom: 1px solid var(--card-border);
+      color: var(--text-main);
+    }
+
+    tr:hover {
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    /* Ticket Receipt Modal/Box */
+    .receipt-card {
+      background: #0f172a;
+      border: 2px dashed #334155;
+      border-radius: var(--radius);
+      padding: 1.5rem;
+      max-width: 600px;
+      margin: 1.5rem auto;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
+      font-family: 'Courier New', Courier, monospace;
+      color: #e2e8f0;
+      white-space: pre-wrap;
+      line-height: 1.4;
+    }
+
+    /* Footer */
+    footer {
+      text-align: center;
+      padding: 2rem;
+      color: var(--text-muted);
+      font-size: 0.85rem;
+      border-top: 1px solid var(--card-border);
+      background: #090d16;
+      margin-top: auto;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <header>
+    <div class="header-content">
+      <div class="brand">
+        <div class="brand-icon">🚆</div>
+        <div class="brand-text">
+          <h1>Indian Railways Reservation Portal</h1>
+          <p>Group 4 | Embedded C++11 & SQLite3 Full-Stack Engine</p>
+        </div>
+      </div>
+      <div class="status-badge">
+        <div class="status-dot"></div>
+        <span>C++ Winsock Server Online (:8080)</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Navigation Tabs -->
+  <div class="nav-tabs">
+    <button class="tab-btn active" onclick="switchTab('trains')">🚂 Train Schedules</button>
+    <button class="tab-btn" onclick="switchTab('book')">🎫 Book Ticket</button>
+    <button class="tab-btn" onclick="switchTab('pnr')">🔍 PNR Status & E-Ticket</button>
+    <button class="tab-btn" onclick="switchTab('cancel')">❌ Cancel Ticket</button>
+    <button class="tab-btn" onclick="switchTab('admin')">📊 Live System Analytics</button>
+  </div>
+
+  <!-- Main Content Areas -->
+  <main>
+    <!-- TAB 1: TRAINS & SCHEDULES -->
+    <div id="tab-trains" class="tab-pane active">
+      <div class="card">
+        <div class="card-title">
+          <span>Operational Train Schedules</span>
+          <button class="btn btn-secondary" style="margin-left: auto; padding: 0.4rem 0.8rem; font-size: 0.8rem;" onclick="loadTrains()">↻ Refresh</button>
+        </div>
+        <div id="trains-list" class="trains-grid">
+          <p style="color: var(--text-muted);">Loading active trains from C++ backend...</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 2: BOOK TICKET -->
+    <div id="tab-book" class="tab-pane">
+      <div class="card">
+        <div class="card-title">Reserve Passenger Ticket</div>
+        
+        <form id="booking-form" onsubmit="handleBooking(event)">
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="book-train">Select Train</label>
+              <select id="book-train" class="form-control" onchange="onTrainSelected()" required>
+                <option value="">-- Choose a train --</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="book-name">Passenger Full Name</label>
+              <input type="text" id="book-name" class="form-control" placeholder="e.g. Ramesh Sharma" required />
+            </div>
+
+            <div class="form-group">
+              <label for="book-age">Passenger Age</label>
+              <input type="number" id="book-age" class="form-control" min="1" max="120" placeholder="e.g. 62" oninput="updateFarePreview()" required />
+            </div>
+
+            <div class="form-group">
+              <label for="book-gender">Gender</label>
+              <select id="book-gender" class="form-control" required>
+                <option value="M">Male (M)</option>
+                <option value="F">Female (F)</option>
+                <option value="O">Other (O)</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="book-date">Date of Travel</label>
+              <input type="date" id="book-date" class="form-control" required />
+            </div>
+          </div>
+
+          <!-- Fare & Concession Breakdown -->
+          <div class="fare-box">
+            <div class="fare-row">
+              <span>Base Train Fare:</span>
+              <span id="fare-base">Rs. 0.00</span>
+            </div>
+            <div class="fare-row">
+              <span>Age Concession Tier:</span>
+              <span id="fare-concession"><span class="concession-badge">STANDARD / GENERAL</span></span>
+            </div>
+            <div class="fare-row">
+              <span>Discount Amount:</span>
+              <span id="fare-discount" style="color: #34d399;">- Rs. 0.00</span>
+            </div>
+            <div class="fare-row total">
+              <span>Total Payable Amount:</span>
+              <span id="fare-total">Rs. 0.00</span>
+            </div>
+          </div>
+
+          <!-- Coach Interactive Seat Layout -->
+          <div id="seat-selection-section" style="display: none;">
+            <label style="font-size: 0.9rem; font-weight: 700; color: var(--text-main);">Choose Seat from Interactive Coach Layout</label>
+            <div class="seat-map-container">
+              <div class="seat-legend">
+                <div class="legend-item"><div class="legend-box box-available"></div> Free Seat (Click to Pick)</div>
+                <div class="legend-item"><div class="legend-box box-booked"></div> Booked / Occupied</div>
+                <div class="legend-item"><div class="legend-box box-selected"></div> Your Chosen Seat</div>
+              </div>
+              <div id="seat-grid" class="seat-grid">
+                <!-- Populated dynamically via JS -->
+              </div>
+            </div>
+            <p id="selected-seat-msg" style="font-size: 0.9rem; color: #93c5fd; margin-bottom: 1rem;"></p>
+          </div>
+
+          <input type="hidden" id="selected-seat-no" value="-1" />
+
+          <button type="submit" class="btn btn-success" style="width: 100%; padding: 0.9rem; font-size: 1.05rem;">
+            ✓ Confirm Reservation & Generate E-Ticket
+          </button>
+        </form>
+
+        <div id="booking-result" style="display:none; margin-top: 1.5rem;"></div>
+      </div>
+    </div>
+
+    <!-- TAB 3: PNR STATUS & E-TICKET -->
+    <div id="tab-pnr" class="tab-pane">
+      <div class="card">
+        <div class="card-title">Live PNR Status Inquiry & E-Ticket Download</div>
+        <div style="display: flex; gap: 0.75rem; max-width: 500px; margin-bottom: 1.5rem;">
+          <input type="number" id="pnr-input" class="form-control" placeholder="Enter 4-digit PNR Number (e.g. 1001)" />
+          <button class="btn" onclick="checkPNR()">Search PNR</button>
+        </div>
+
+        <div id="pnr-result"></div>
+      </div>
+    </div>
+
+    <!-- TAB 4: CANCEL TICKET -->
+    <div id="tab-cancel" class="tab-pane">
+      <div class="card">
+        <div class="card-title">Cancel Confirmed Ticket</div>
+        <p style="color: var(--text-muted); margin-bottom: 1.25rem;">
+          Cancelling a ticket immediately frees the seat and triggers automatic promotion for the first passenger in the FIFO waiting list.
+        </p>
+
+        <div style="display: flex; gap: 0.75rem; max-width: 500px; margin-bottom: 1.5rem;">
+          <input type="number" id="cancel-pnr-input" class="form-control" placeholder="Enter PNR to Cancel" />
+          <button class="btn btn-danger" onclick="cancelTicket()">Cancel Booking</button>
+        </div>
+
+        <div id="cancel-result"></div>
+      </div>
+    </div>
+
+    <!-- TAB 5: ADMIN ANALYTICS -->
+    <div id="tab-admin" class="tab-pane">
+      <div class="stats-row">
+        <div class="stat-card">
+          <div class="stat-label">Active Trains</div>
+          <div id="stat-trains" class="stat-value">--</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Confirmed Bookings</div>
+          <div id="stat-confirmed" class="stat-value" style="color: #34d399;">--</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Cancelled Tickets</div>
+          <div id="stat-cancelled" class="stat-value" style="color: #f87171;">--</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Waiting List Queue</div>
+          <div id="stat-waitlist" class="stat-value" style="color: #fbbf24;">--</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Total Net Revenue</div>
+          <div id="stat-revenue" class="stat-value" style="color: #60a5fa;">--</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">
+          <span>Live Passenger Manifest</span>
+          <button class="btn btn-secondary" style="margin-left: auto; padding: 0.4rem 0.8rem; font-size: 0.8rem;" onclick="loadAdminData()">↻ Refresh Manifest</button>
+        </div>
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>PNR</th>
+                <th>Passenger</th>
+                <th>Age/Gen</th>
+                <th>Train #</th>
+                <th>Seat</th>
+                <th>Travel Date</th>
+                <th>Status</th>
+                <th>Concession</th>
+                <th>Fare Paid</th>
+              </tr>
+            </thead>
+            <tbody id="manifest-table-body">
+              <tr><td colspan="9" style="text-align: center; color: var(--text-muted);">Loading manifest...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Footer -->
+  <footer>
+    <p>Railway Ticket Reservation System v2.0 &bull; Group 4 Mini Project &bull; B.Tech CSE (AI/ML)</p>
+    <p style="margin-top: 0.25rem;">Built with C++11, SQLite3 Embedded Engine, Winsock Sockets, and Modern Responsive HTML5</p>
+  </footer>
+
+  <!-- Client-Side JavaScript Application Logic -->
+  <script>
+    let globalTrains = [];
+    let currentSelectedTrain = null;
+
+    // Tab Navigation
+    function switchTab(tabId) {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+
+      event.currentTarget.classList.add('active');
+      document.getElementById('tab-' + tabId).classList.add('active');
+
+      if (tabId === 'trains') loadTrains();
+      if (tabId === 'admin') loadAdminData();
+    }
+
+    // Set Default Travel Date to Tomorrow
+    document.addEventListener("DOMContentLoaded", () => {
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      document.getElementById('book-date').value = tomorrow.toISOString().split('T')[0];
+      loadTrains();
+    });
+
+    // Fetch and Display Trains
+    async function loadTrains() {
+      try {
+        const res = await fetch('/api/trains');
+        globalTrains = await res.json();
+        
+        // Render Train Cards
+        const container = document.getElementById('trains-list');
+        const select = document.getElementById('book-train');
+        
+        container.innerHTML = '';
+        select.innerHTML = '<option value="">-- Choose a train --</option>';
+
+        globalTrains.forEach(t => {
+          // Add to select
+          const opt = document.createElement('option');
+          opt.value = t.trainNo;
+          opt.textContent = `#${t.trainNo} - ${t.name} (${t.source} -> ${t.destination})`;
+          select.appendChild(opt);
+
+          // Card
+          const isFull = t.availableSeats <= 0;
+          const card = document.createElement('div');
+          card.className = 'train-card';
+          card.innerHTML = `
+            <div class="train-header">
+              <div class="train-name">${t.name}</div>
+              <span class="train-no">#${t.trainNo}</span>
+            </div>
+            <div class="route-info">
+              <span>📍 ${t.source}</span>
+              <span>➔</span>
+              <span>🎯 ${t.destination}</span>
+              <span style="margin-left: auto;">⏰ ${t.departure}</span>
+            </div>
+            <div class="train-stats">
+              <span class="badge-seats ${isFull ? 'seats-full' : 'seats-available'}">
+                ${isFull ? 'FULLY BOOKED (Waitlist)' : t.availableSeats + ' Seats Left'}
+              </span>
+              <span style="font-weight: 700; color: var(--accent);">Rs. ${t.fare.toFixed(2)}</span>
+            </div>
+            <button class="btn" style="width: 100%; margin-top: 1rem; padding: 0.5rem;" onclick="selectTrainAndBook(${t.trainNo})">
+              Book on This Train
+            </button>
+          `;
+          container.appendChild(card);
+        });
+
+      } catch (err) {
+        console.error("Error loading trains:", err);
+      }
+    }
+
+    function selectTrainAndBook(trainNo) {
+      document.querySelectorAll('.tab-btn')[1].click(); // Switch to book tab
+      document.getElementById('book-train').value = trainNo;
+      onTrainSelected();
+    }
+
+    async function onTrainSelected() {
+      const trainNo = parseInt(document.getElementById('book-train').value);
+      currentSelectedTrain = globalTrains.find(t => t.trainNo === trainNo);
+      updateFarePreview();
+
+      if (!currentSelectedTrain) {
+        document.getElementById('seat-selection-section').style.display = 'none';
+        return;
+      }
+
+      document.getElementById('seat-selection-section').style.display = 'block';
+      loadSeatGrid(trainNo);
+    }
+
+    // Dynamic Fare & Age Concession Preview
+    function updateFarePreview() {
+      if (!currentSelectedTrain) {
+        document.getElementById('fare-base').innerText = 'Rs. 0.00';
+        document.getElementById('fare-discount').innerText = '- Rs. 0.00';
+        document.getElementById('fare-total').innerText = 'Rs. 0.00';
+        return;
+      }
+
+      const baseFare = currentSelectedTrain.fare;
+      const age = parseInt(document.getElementById('book-age').value) || 25;
+      
+      let discountRate = 0.0;
+      let concessionTier = "STANDARD / GENERAL";
+
+      if (age < 12) {
+        discountRate = 0.50;
+        concessionTier = "CHILD CONCESSION (50% DISCOUNT)";
+      } else if (age >= 60) {
+        discountRate = 0.40;
+        concessionTier = "SENIOR CITIZEN CONCESSION (40% DISCOUNT)";
+      }
+
+      const discountAmt = baseFare * discountRate;
+      const finalFare = baseFare - discountAmt;
+
+      document.getElementById('fare-base').innerText = `Rs. ${baseFare.toFixed(2)}`;
+      document.getElementById('fare-concession').innerHTML = `<span class="concession-badge">${concessionTier}</span>`;
+      document.getElementById('fare-discount').innerText = `- Rs. ${discountAmt.toFixed(2)}`;
+      document.getElementById('fare-total').innerText = `Rs. ${finalFare.toFixed(2)}`;
+    }
+
+    // Load Interactive 2D Seat Map
+    async function loadSeatGrid(trainNo) {
+      try {
+        const res = await fetch(`/api/seats?trainNo=${trainNo}`);
+        const data = await res.json();
+        const grid = document.getElementById('seat-grid');
+        grid.innerHTML = '';
+        document.getElementById('selected-seat-no').value = "-1";
+        document.getElementById('selected-seat-msg').innerText = "Click an open green seat above or leave unselected to auto-assign.";
+
+        data.seats.forEach((isBooked, idx) => {
+          const seatNum = idx + 1;
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = `seat-btn ${isBooked ? 'booked' : 'available'}`;
+          btn.innerText = `S-${seatNum}`;
+          
+          if (!isBooked) {
+            btn.onclick = () => selectSeat(seatNum, btn);
+          } else {
+            btn.disabled = true;
+          }
+          grid.appendChild(btn);
+        });
+
+      } catch (err) {
+        console.error("Error loading seats:", err);
+      }
+    }
+
+    function selectSeat(seatNum, btnElem) {
+      document.querySelectorAll('.seat-btn').forEach(b => b.classList.remove('selected'));
+      btnElem.classList.add('selected');
+      document.getElementById('selected-seat-no').value = seatNum;
+      document.getElementById('selected-seat-msg').innerText = `Selected Seat #${seatNum} (Manual Choice)`;
+    }
+
+    // Handle Booking Form Submission
+    async function handleBooking(event) {
+      event.preventDefault();
+      
+      const trainNo = parseInt(document.getElementById('book-train').value);
+      const name = document.getElementById('book-name').value.trim();
+      const age = parseInt(document.getElementById('book-age').value);
+      const gender = document.getElementById('book-gender').value;
+      const dateStr = document.getElementById('book-date').value;
+      const seatNo = parseInt(document.getElementById('selected-seat-no').value);
+
+      if (!trainNo || !name || !age || !dateStr) {
+        alert("Please fill in all booking fields.");
+        return;
+      }
+
+      const payload = { trainNo, name, age, gender, dateStr, seatNo };
+
+      try {
+        const res = await fetch('/api/book', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        const result = await res.json();
+        const box = document.getElementById('booking-result');
+        box.style.display = 'block';
+
+        if (result.success) {
+          if (result.status === "CONFIRMED") {
+            box.innerHTML = `
+              <div style="background: rgba(16, 185, 129, 0.15); border: 1px solid #10b981; border-radius: var(--radius); padding: 1.25rem;">
+                <h3 style="color: #34d399; margin-bottom: 0.5rem;">🎉 Ticket Successfully Confirmed!</h3>
+                <p><strong>PNR Number:</strong> ${result.pnr}</p>
+                <p><strong>Passenger:</strong> ${result.name} (Age: ${result.age})</p>
+                <p><strong>Allocated Seat:</strong> Seat #${result.seatNo}</p>
+                <p><strong>Concession Applied:</strong> ${result.concession}</p>
+                <p><strong>Fare Paid:</strong> Rs. ${result.farePaid.toFixed(2)}</p>
+                <div style="margin-top: 1rem; display: flex; gap: 0.75rem;">
+                  <button class="btn btn-success" onclick="downloadTicket(${result.pnr})">📥 Download E-Ticket (.txt)</button>
+                  <button class="btn btn-secondary" onclick="viewTicketReceipt(${result.pnr})">📄 View Receipt Slip</button>
+                </div>
+              </div>
+            `;
+          } else {
+            box.innerHTML = `
+              <div style="background: rgba(245, 158, 11, 0.15); border: 1px solid #f59e0b; border-radius: var(--radius); padding: 1.25rem;">
+                <h3 style="color: #fbbf24; margin-bottom: 0.5rem;">⏳ Train Full: Placed in Waiting List Queue</h3>
+                <p><strong>Passenger:</strong> ${result.name}</p>
+                <p><strong>Queue Position:</strong> WL-${result.waitPos}</p>
+                <p><strong>Status:</strong> WAITING (FIFO Auto-Promotion on Cancellation)</p>
+              </div>
+            `;
+          }
+          // Refresh train data
+          loadTrains();
+          onTrainSelected();
+        } else {
+          box.innerHTML = `<div style="color: #ef4444;">${result.error || "Booking failed."}</div>`;
+        }
+
+      } catch (err) {
+        alert("Booking request error: " + err);
+      }
+    }
+
+    // PNR Lookup
+    async function checkPNR() {
+      const pnr = document.getElementById('pnr-input').value.trim();
+      if (!pnr) return;
+
+      try {
+        const res = await fetch(`/api/pnr?pnr=${pnr}`);
+        const data = await res.json();
+        const box = document.getElementById('pnr-result');
+
+        if (!data.found) {
+          box.innerHTML = `<p style="color: #ef4444;">No booking record found for PNR #${pnr}.</p>`;
+          return;
+        }
+
+        const isCancelled = data.status === "CANCELLED";
+
+        box.innerHTML = `
+          <div class="card" style="background: #0d1322; border-color: ${isCancelled ? '#ef4444' : '#10b981'};">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+              <h3 style="font-size: 1.2rem;">PNR: ${data.pnr}</h3>
+              <span class="badge-seats ${isCancelled ? 'seats-full' : 'seats-available'}">${data.status}</span>
+            </div>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; font-size: 0.95rem;">
+              <div><strong>Passenger:</strong> ${data.name}</div>
+              <div><strong>Age / Gender:</strong> ${data.age} / ${data.gender}</div>
+              <div><strong>Train #:</strong> ${data.trainNo}</div>
+              <div><strong>Seat #:</strong> ${data.seatNo}</div>
+              <div><strong>Travel Date:</strong> ${data.date}</div>
+              <div><strong>Concession:</strong> ${data.concession}</div>
+              <div><strong>Fare Paid:</strong> Rs. ${data.farePaid.toFixed(2)}</div>
+            </div>
+            <div style="margin-top: 1.25rem; display: flex; gap: 0.75rem;">
+              <button class="btn btn-success" onclick="downloadTicket(${data.pnr})">📥 Download E-Ticket (.txt)</button>
+              <button class="btn btn-secondary" onclick="viewTicketReceipt(${data.pnr})">📄 View Receipt Slip</button>
+            </div>
+          </div>
+        `;
+
+      } catch (err) {
+        alert("Error looking up PNR: " + err);
+      }
+    }
+
+    // Cancel Ticket
+    async function cancelTicket() {
+      const pnr = document.getElementById('cancel-pnr-input').value.trim();
+      if (!pnr) return;
+
+      if (!confirm(`Are you sure you want to cancel ticket PNR #${pnr}?`)) {
+        return;
+      }
+
+      try {
+        const res = await fetch('/api/cancel', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ pnr: parseInt(pnr) })
+        });
+        const data = await res.json();
+        const box = document.getElementById('cancel-result');
+
+        if (data.success) {
+          box.innerHTML = `
+            <div style="background: rgba(16, 185, 129, 0.15); border: 1px solid #10b981; border-radius: var(--radius); padding: 1.25rem;">
+              <h4 style="color: #34d399;">✓ Ticket PNR #${pnr} Cancelled Successfully</h4>
+              <p>${data.message || ""}</p>
+            </div>
+          `;
+          loadTrains();
+        } else {
+          box.innerHTML = `<p style="color: #ef4444;">${data.error || "Cancellation failed."}</p>`;
+        }
+
+      } catch (err) {
+        alert("Error cancelling ticket: " + err);
+      }
+    }
+
+    // View Receipt in Modal / Box
+    async function viewTicketReceipt(pnr) {
+      try {
+        const res = await fetch(`/api/ticket?pnr=${pnr}`);
+        const text = await res.text();
+        const win = window.open("", "_blank", "width=650,height=700");
+        win.document.write(`<pre style="background:#0f172a;color:#f8fafc;padding:2rem;font-family:monospace;font-size:14px;line-height:1.5;">${text}</pre>`);
+      } catch (err) {
+        alert("Could not load receipt: " + err);
+      }
+    }
+
+    // Download E-Ticket text file directly from browser
+    async function downloadTicket(pnr) {
+      try {
+        const res = await fetch(`/api/ticket?pnr=${pnr}`);
+        const text = await res.text();
+        const blob = new Blob([text], { type: 'text/plain' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `ticket_${pnr}.txt`;
+        a.click();
+      } catch (err) {
+        alert("Download failed: " + err);
+      }
+    }
+
+    // Load Admin Analytics & Passenger Manifest
+    async function loadAdminData() {
+      try {
+        const [statsRes, manifestRes] = await Promise.all([
+          fetch('/api/stats'),
+          fetch('/api/manifest')
+        ]);
+
+        const stats = await statsRes.json();
+        const manifest = await manifestRes.json();
+
+        document.getElementById('stat-trains').innerText = stats.totalTrains;
+        document.getElementById('stat-confirmed').innerText = stats.confirmedBookings;
+        document.getElementById('stat-cancelled').innerText = stats.cancelledBookings;
+        document.getElementById('stat-waitlist').innerText = stats.totalWaitlisted;
+        document.getElementById('stat-revenue').innerText = `Rs. ${stats.totalRevenue.toFixed(2)}`;
+
+        const tbody = document.getElementById('manifest-table-body');
+        tbody.innerHTML = '';
+
+        if (manifest.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;">No bookings recorded yet.</td></tr>';
+          return;
+        }
+
+        manifest.forEach(p => {
+          const tr = document.createElement('tr');
+          const isCancelled = p.status === "CANCELLED";
+          tr.innerHTML = `
+            <td><strong>#${p.pnr}</strong></td>
+            <td>${p.name}</td>
+            <td>${p.age} / ${p.gender}</td>
+            <td>#${p.trainNo}</td>
+            <td>Seat #${p.seatNo}</td>
+            <td>${p.date}</td>
+            <td><span class="badge-seats ${isCancelled ? 'seats-full' : 'seats-available'}">${p.status}</span></td>
+            <td><span class="concession-badge">${p.concession}</span></td>
+            <td style="font-weight: 700; color: var(--accent);">Rs. ${p.farePaid.toFixed(2)}</td>
+          `;
+          tbody.appendChild(tr);
+        });
+
+      } catch (err) {
+        console.error("Error loading admin stats:", err);
+      }
+    }
+  </script>
+</body>
+</html>

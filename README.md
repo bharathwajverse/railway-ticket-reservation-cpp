@@ -186,6 +186,12 @@ make
 ./railway
 ```
 
+### Command-Line Flags
+```cmd
+railway.exe --version   # Displays software version and project metadata
+railway.exe --help      # Displays command-line argument help
+```
+
 ---
 
 ## 🧪 Edge Case Demonstrations

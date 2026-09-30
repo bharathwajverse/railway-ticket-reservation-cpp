@@ -1,5 +1,12 @@
 @echo off
-set "PATH=C:\Users\bharathwaj\.local\w64devkit\bin;%PATH%"
+REM Auto-detect GCC/G++ compiler toolchain
+where g++ >nul 2>nul
+if errorlevel 1 (
+    if exist "%USERPROFILE%\.local\w64devkit\bin" set "PATH=%USERPROFILE%\.local\w64devkit\bin;%PATH%"
+    if exist "C:\w64devkit\bin" set "PATH=C:\w64devkit\bin;%PATH%"
+    if exist "C:\msys64\ucrt64\bin" set "PATH=C:\msys64\ucrt64\bin;%PATH%"
+    if exist "C:\msys64\mingw64\bin" set "PATH=C:\msys64\mingw64\bin;%PATH%"
+)
 
 echo ========================================================
 echo  Compiling Railway Ticket Reservation System

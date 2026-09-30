@@ -1,15 +1,14 @@
 /*
   ========================================================================================================
-  PROJECT: Railway Ticket Reservation System (Group 4)
+  PROJECT: Railway Ticket Reservation System
   FILE: main.cpp (Complete All-in-One C++ Implementation)
   
-  TARGET AUDIENCE: 1st Year B.Tech CSE (AI/ML)
-  SYLLABUS CONSTRAINTS ENFORCED:
-    - Pure C++11 procedural paradigm using 'struct' (No 'class', no OOP inheritance, no polymorphism).
-    - No templates, no lambdas, no 'auto', no smart pointers, no 'try/catch' exceptions.
-    - STL Containers allowed: vector, queue, map, stack, string.
-    - Manual DSA: Binary Search, Linear Search, Bubble Sort written from scratch.
-    - Dual Storage: Fast in-memory working models (vector, 2D array, queue) synchronized with SQLite 3.
+  ARCHITECTURE:
+    - Pure C++11 procedural design using 'struct' definitions.
+    - Zero external dependencies: C++ standard library + SQLite 3 amalgamation + Winsock2.
+    - STL Containers: vector, queue, map, stack, string.
+    - Algorithms: Binary Search (O(log N)), Linear Search (O(N)), Bubble Sort (O(N^2)).
+    - Dual Storage: In-memory working models (vector, 2D array, queue) synchronized with SQLite 3.
     - Dual Interface: Interactive Terminal Kiosk (Console) + Embedded C++ Winsock HTTP Server (Web UI).
   
   TABLE OF CONTENTS:
@@ -77,10 +76,7 @@ const int MAX_WAITING = 10;
 /*
   STRUCTURE: Date
   PURPOSE: Represents a calendar date (day, month, year).
-  WHY USED: Nested inside Passenger and WaitingEntry to cleanly group date attributes.
-  HOW TO EXPLAIN TO PROFESSOR:
-  "Sir, Date is a nested structure. Instead of passing 3 separate integer variables
-   everywhere, we bundle day, month, and year into one clean data type."
+  DESIGN RATIONALE: Nested inside Passenger and WaitingEntry to encapsulate date attributes cleanly.
 */
 struct Date {
     int day;
@@ -92,8 +88,7 @@ struct Date {
   STRUCTURE: Train
   PURPOSE: Represents a scheduled train in the railway network.
   ATTRIBUTES: trainNo, name, source, destination, departure time, totalSeats, availableSeats, fare.
-  HOW TO EXPLAIN TO PROFESSOR:
-  "Sir, struct Train groups all heterogeneous attributes belonging to a single train entity."
+  DESIGN RATIONALE: Groups all heterogeneous train specifications into a single contiguous record.
 */
 struct Train {
     int trainNo;
@@ -110,9 +105,7 @@ struct Train {
   STRUCTURE: Passenger
   PURPOSE: Represents a confirmed or cancelled passenger ticket.
   ATTRIBUTES: Unique PNR, name, age, gender, trainNo, seatNo, travelDate, status, concession, farePaid.
-  HOW TO EXPLAIN TO PROFESSOR:
-  "Sir, each ticket issued generates a Passenger structure with a unique PNR, assigned seat,
-   calculated age-based concession tier, and final fare paid."
+  DESIGN RATIONALE: Encapsulates passenger identity, assigned coach seat, concession tier, and billed fare.
 */
 struct Passenger {
     int pnr;
@@ -130,9 +123,7 @@ struct Passenger {
 /*
   STRUCTURE: WaitingEntry
   PURPOSE: Represents a passenger placed on the waiting list when a train is full.
-  HOW TO EXPLAIN TO PROFESSOR:
-  "Sir, when all seats are full, passengers do not get a seat number immediately.
-   Instead, they are queued as a WaitingEntry in First-Come, First-Served (FIFO) order."
+  DESIGN RATIONALE: Managed within a FIFO queue; promoted automatically upon ticket cancellation.
 */
 struct WaitingEntry {
     int waitId;
@@ -165,9 +156,9 @@ struct SystemStats {
     3. map<int, queue<WaitingEntry> > waitingLists: Associates each trainNo with a FIFO waiting queue.
     4. int seatMap[MAX_TRAINS][MAX_SEATS]: 2D array tracking seat occupancy (0 = free, 1 = booked).
     5. stack<Passenger> recentCancellations: LIFO stack tracking recently cancelled tickets for undo.
-  HOW TO EXPLAIN TO PROFESSOR:
-  "Sir, RailwaySystem holds our working memory. 2D array gives O(1) seat checks, queue ensures
-   FIFO waiting lists, stack gives LIFO undo, and vector keeps trains sorted for Binary Search."
+  DESIGN RATIONALE:
+    Dual storage architecture: O(1) seat matrix checks, FIFO waiting queues, LIFO cancellation undo stack,
+    and O(log N) binary search across trains, all mirrored to SQLite for ACID persistence.
 */
 struct RailwaySystem {
     vector<Train> trains;
@@ -186,7 +177,7 @@ struct RailwaySystem {
   FUNCTION: isLeapYear
   PURPOSE: Determines whether a given year is a leap year.
   TIME COMPLEXITY: O(1)
-  HOW TO EXPLAIN: "A year is leap if divisible by 4 but not 100, unless also divisible by 400."
+  ALGORITHM NOTE: A year is leap if divisible by 4 and not 100, or if divisible by 400.
 */
 bool isLeapYear(int year) {
     if ((year % 4 == 0 && year % 100 != 0) || (year % 400 == 0)) {
@@ -199,7 +190,7 @@ bool isLeapYear(int year) {
   FUNCTION: isValidDate
   PURPOSE: Validates if a given day, month, and year form a legitimate calendar date.
   TIME COMPLEXITY: O(1)
-  HOW TO EXPLAIN: "We check month range 1-12, days per month using a 1D array, and 29 days for Feb in leap years."
+  ALGORITHM NOTE: Verifies month range [1-12], days per month via lookup table, and 29 days for Feb in leap years.
 */
 bool isValidDate(int day, int month, int year) {
     if (year < 2024 || year > 2035) {
@@ -315,9 +306,7 @@ Date readDate(const string& prompt) {
     - Child (< 12 years): 50% discount
     - Senior Citizen (>= 60 years): 40% discount
     - General (12 - 59 years): 0% discount (full fare)
-  HOW TO EXPLAIN TO PROFESSOR:
-  "Sir, this implements dynamic business rules. The function takes the passenger's age
-   and train base fare, then calculates the discount tier and final payable fare."
+  DESIGN NOTE: Takes passenger age and train base fare, computing the concession tier and payable amount.
 */
 void calculateConcession(int age, float baseFare, string& concession, float& finalFare) {
     if (age < 12) {
@@ -335,9 +324,7 @@ void calculateConcession(int age, float baseFare, string& concession, float& fin
 /*
   FUNCTION: exportTicketToFile
   PURPOSE: Generates a formatted official electronic ticket slip (ticket_<PNR>.txt) using <fstream>.
-  HOW TO EXPLAIN TO PROFESSOR:
-  "Sir, this implements File Output Streams (Module V - <fstream>). When a ticket is
-   confirmed, it serializes the booking receipt into a persistent text file on disk."
+  DESIGN NOTE: Serializes the booking confirmation into an electronic reservation slip file on disk.
 */
 bool exportTicketToFile(const Passenger& p, const Train& t) {
     string fileName = "ticket_" + to_string(p.pnr) + ".txt";
@@ -715,9 +702,7 @@ bool loadWaitingList(sqlite3* db, map<int, queue<WaitingEntry> >& waitingLists) 
   FUNCTION: binarySearchTrain
   PURPOSE: Locates a train in the sorted trains vector in O(log N) time.
   TIME COMPLEXITY: O(log N) where N is number of trains.
-  HOW TO EXPLAIN TO PROFESSOR:
-  "Sir, binary search requires the vector to be sorted by trainNo. At each step,
-   we compare the target with the middle element and eliminate half of the search space."
+  ALGORITHM NOTE: Divides search range in half iteratively based on trainNo key comparison.
 */
 int binarySearchTrain(const vector<Train>& trains, int trainNo) {
     int low = 0;
@@ -896,10 +881,7 @@ void searchTrainByDestination(const RailwaySystem& sys) {
   FUNCTION: sortTrains
   PURPOSE: Sorts trains for display using manual Bubble Sort on a COPY of the vector.
   TIME COMPLEXITY: O(N^2)
-  HOW TO EXPLAIN TO PROFESSOR:
-  "Sir, we sort a COPY of the vector for display. If we sorted the main vector by fare,
-   it would break Binary Search (which requires sorting by trainNo) and desynchronize
-   our 2D seat map rows. Sorting a copy protects data integrity!"
+  DESIGN NOTE: Sorts a detached vector copy to preserve primary binary search order (by trainNo) in system state.
 */
 void sortTrains(RailwaySystem& sys) {
     if (sys.trains.empty()) {
@@ -1194,10 +1176,7 @@ int findPassengerByPNR(const RailwaySystem& sys, int pnr) {
   FUNCTION: promoteFromWaitingList
   PURPOSE: Automatically promotes the head of the waiting queue into a freed seat.
   TIME COMPLEXITY: O(1)
-  HOW TO EXPLAIN TO PROFESSOR:
-  "Sir, when a seat is freed, we check if the train's queue is empty.
-   If not empty, we call front() to inspect the first waiting passenger and pop()
-   to remove them (FIFO order), allocating them the freed seat in O(1) time."
+  ALGORITHM NOTE: Pops FIFO queue front element and reassigns newly vacant seat in O(1) time.
 */
 bool promoteFromWaitingList(RailwaySystem& sys, sqlite3* db, int trainIndex, int seatNo) {
     int trainNo = sys.trains[trainIndex].trainNo;
@@ -1303,10 +1282,7 @@ void cancelTicket(RailwaySystem& sys, sqlite3* db) {
     2. Uses a secondary temporary queue to filter out the matching entry.
     3. Deletes the row from SQLite waiting_list table.
     4. Restores the remaining entries to the main queue in preserved order.
-  HOW TO EXPLAIN TO PROFESSOR:
-  "Sir, standard queue does not support random access. To cancel a waiting passenger,
-   we dequeue each element into a temporary queue, skipping the cancelled passenger,
-   and then restore the queue. This preserves the exact FIFO order of all other passengers."
+  ALGORITHM NOTE: Queue filtering preserves strict FIFO ordering for all remaining waiting entries.
 */
 void cancelWaitingListEntry(RailwaySystem& sys, sqlite3* db) {
     cout << "\n--- Cancel Waiting List Ticket ---\n";
@@ -2121,7 +2097,7 @@ void runHttpServer(RailwaySystem* sysPtr, sqlite3* dbPtr, int port) {
 */
 void displayPortalSelectionMenu() {
     cout << "\n=======================================================\n";
-    cout << "     RAILWAY TICKET RESERVATION SYSTEM (GROUP 4)       \n";
+    cout << "           RAILWAY TICKET RESERVATION SYSTEM           \n";
     cout << "=======================================================\n";
     cout << "  1. Passenger Portal (Book, Cancel, Status, E-Ticket)\n";
     cout << "  2. Administrator Portal (PIN Protected: Manifest, Stats)\n";
@@ -2224,13 +2200,16 @@ void runPassengerPortal(RailwaySystem& sys, sqlite3* db) {
 
 /*
   FUNCTION: runAdminPortal
-  PURPOSE: Authenticates administrator PIN (default: admin123) and runs management loop.
+  PURPOSE: Authenticates administrator PIN and runs management loop.
 */
 void runAdminPortal(RailwaySystem& sys, sqlite3* db) {
     cout << "\n[Security Authentication Required]\n";
     string pin = readNonEmptyString("Enter Administrator PIN: ");
 
-    if (pin != "admin123") {
+    const char* envPin = getenv("ADMIN_PIN");
+    string requiredPin = (envPin != NULL && string(envPin).length() > 0) ? string(envPin) : "admin123";
+
+    if (pin != requiredPin) {
         cout << "[Access Denied] Incorrect administrator PIN!\n";
         return;
     }
@@ -2292,7 +2271,7 @@ int main(int argc, char* argv[]) {
         string arg = argv[1];
         if (arg == "--version" || arg == "-v") {
             cout << "Railway Ticket Reservation System v2.0.0 (C++11/SQLite3/Winsock)\n";
-            cout << "Developed for B.Tech CSE (AI/ML) DSA Mini Project - Group 4\n";
+            cout << "High-Performance In-Memory Data Structures & Embedded REST Architecture\n";
             return 0;
         }
         if (arg == "--help" || arg == "-h") {

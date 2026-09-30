@@ -5,6 +5,7 @@
 #include <vector>
 #include <map>
 #include <queue>
+#include <stack>
 
 using namespace std;
 
@@ -58,10 +59,12 @@ struct WaitingEntry {
 struct RailwaySystem {
     vector<Train> trains;
     vector<Passenger> passengers;
-    // Map key = trainNo, value = FIFO queue of waiting passengers
+    // Map key = trainNo, value = FIFO queue of waiting passengers (Module IX)
     map<int, queue<WaitingEntry> > waitingLists;
-    // 2D seat map: 0 = free, 1 = booked. Row = index of train in trains vector
+    // 2D seat map: 0 = free, 1 = booked. Row = index of train in trains vector (Module IV)
     int seatMap[MAX_TRAINS][MAX_SEATS];
+    // Stack of recent cancellations for LIFO inspection and undo operations (Module VIII)
+    stack<Passenger> recentCancellations;
 };
 
 #endif // STRUCTURES_H

@@ -56,7 +56,8 @@ flowchart TD
 | **Nested Structures** | `structures.h` | `struct Date` (day, month, year) nested inside passenger and queue records. |
 | **2D Arrays** | `railway.cpp` | `seatMap[MAX_TRAINS][MAX_SEATS]` provides $O(1)$ random access to check/mark seat availability. |
 | **1D Arrays** | `utils.cpp` | Static lookup array for calendar month days and leap year handling. |
-| **FIFO Queue (`std::queue`)** | `railway.cpp` | Maintains waiting passengers in strict First-In, First-Out order for fair promotions. |
+| **FIFO Queue (`std::queue`)** | `railway.cpp` | Maintains waiting passengers in strict First-In, First-Out order for fair promotions (Module IX). |
+| **LIFO Stack (`std::stack`)** | `railway.cpp` | Tracks recent ticket cancellations for $O(1)$ inspection and undo operations (Module VIII). |
 | **Map (`std::map`)** | `railway.cpp` | Associates each unique `trainNo` with its own isolated waiting queue. |
 | **Dynamic Vector (`std::vector`)** | `railway.cpp` | Dynamic storage for trains and passengers with index-based operations. |
 | **Binary Search** | `railway.cpp` | Achieves $O(\log N)$ fast lookup for trains by train number on a sorted vector. |
@@ -80,9 +81,11 @@ flowchart TD
 5. **Cancellation & Auto-Promotion:**
    - Cancelling a ticket immediately frees the seat.
    - If passengers are waiting, the head of the queue (`front()`) is auto-promoted into the freed seat with a new confirmed PNR.
-6. **Visual 2D Seat Map:**
+6. **Recent Cancellations & Undo (Stack - LIFO):**
+   - Push cancelled tickets onto a LIFO stack. View the most recently cancelled ticket and restore/undo the cancellation if the seat remains vacant.
+7. **Visual 2D Seat Map:**
    - Displays real-time seating grids (6 seats per row: `[ 1] [ 2] [XX] ...`).
-7. **Robust Input Validation:**
+8. **Robust Input Validation:**
    - Graceful recovery from non-numeric input (`cin.clear()` and `cin.ignore()`).
    - Leap-year aware date verification.
 

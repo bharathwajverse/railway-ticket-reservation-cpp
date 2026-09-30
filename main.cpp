@@ -20,6 +20,7 @@ void displayMenu() {
     cout << "  7. Display Passenger Details (By PNR / By Train / All)\n";
     cout << "  8. Display Waiting List Queues\n";
     cout << "  9. Sort Trains for Display (By Fare or Name)\n";
+    cout << " 10. Recent Cancellations (Stack - LIFO) & Undo\n";
     cout << "  0. Exit Application\n";
     cout << "=======================================================\n";
 }
@@ -47,7 +48,7 @@ int main() {
     int choice = -1;
     do {
         displayMenu();
-        choice = readInt("Enter your choice (0 - 9): ", 0, 9);
+        choice = readInt("Enter your choice (0 - 10): ", 0, 10);
 
         switch (choice) {
             case 1:
@@ -86,6 +87,18 @@ int main() {
             case 9:
                 sortTrains(sys);
                 break;
+            case 10: {
+                cout << "\n--- Recent Cancellations (Module VIII: Stack LIFO) ---\n";
+                cout << "1. View Most Recently Cancelled Ticket (Stack Top)\n";
+                cout << "2. Undo Last Cancellation (Restore Seat)\n";
+                int stackChoice = readInt("Select option (1 or 2): ", 1, 2);
+                if (stackChoice == 1) {
+                    viewLastCancelledTicket(sys);
+                } else {
+                    undoLastCancellation(sys, db);
+                }
+                break;
+            }
             case 0:
                 cout << "\nSaving system state and exiting. Thank you!\n";
                 break;

@@ -27,6 +27,10 @@ int findPassengerByPNR(const RailwaySystem& sys, int pnr);
 bool promoteFromWaitingList(RailwaySystem& sys, sqlite3* db, int trainIndex, int seatNo);
 void cancelTicket(RailwaySystem& sys, sqlite3* db);
 
+// Bonus Stack Operations (Module VIII: LIFO)
+void viewLastCancelledTicket(const RailwaySystem& sys);
+void undoLastCancellation(RailwaySystem& sys, sqlite3* db);
+
 // Display and reporting operations
 void displayAvailableSeats(const RailwaySystem& sys);
 void displayPassengerDetails(const RailwaySystem& sys);

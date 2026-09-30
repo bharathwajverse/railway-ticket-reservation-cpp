@@ -470,6 +470,9 @@ void cancelTicket(RailwaySystem& sys, sqlite3* db) {
     p.status = "CANCELLED";
     updatePassengerStatus(db, pnr, "CANCELLED");
 
+    // Bonus Module VIII: Push onto recent cancellations stack (LIFO)
+    sys.recentCancellations.push(p);
+
     int trainIdx = findTrainIndex(sys, p.trainNo);
     int freedSeat = p.seatNo;
     sys.seatMap[trainIdx][freedSeat - 1] = 0; // Free seat
@@ -478,6 +481,63 @@ void cancelTicket(RailwaySystem& sys, sqlite3* db) {
 
     // Auto-promote waiting passenger if one exists
     promoteFromWaitingList(sys, db, trainIdx, freedSeat);
+}
+
+// Inspects the most recently cancelled ticket from the LIFO stack (Module VIII)
+// Time Complexity: O(1)
+void viewLastCancelledTicket(const RailwaySystem& sys) {
+    if (sys.recentCancellations.empty()) {
+        cout << "\n[Notice] No recent cancellations in the stack.\n";
+        return;
+    }
+
+    const Passenger& p = sys.recentCancellations.top();
+    cout << "\n--- Most Recently Cancelled Ticket (Stack Top - LIFO) ---\n";
+    cout << "PNR Number     : " << p.pnr << "\n";
+    cout << "Passenger Name : " << p.name << "\n";
+    cout << "Train Number   : " << p.trainNo << "\n";
+    cout << "Seat Number    : " << p.seatNo << "\n";
+    cout << "Travel Date    : " << p.travelDate.day << "/" << p.travelDate.month << "/" << p.travelDate.year << "\n";
+    cout << "Status         : " << p.status << "\n";
+    cout << "---------------------------------------------------------\n";
+}
+
+// Undoes the last cancellation if the seat has not been allocated to another passenger
+// Time Complexity: O(1)
+void undoLastCancellation(RailwaySystem& sys, sqlite3* db) {
+    if (sys.recentCancellations.empty()) {
+        cout << "\n[Notice] No cancellations available to undo.\n";
+        return;
+    }
+
+    Passenger last = sys.recentCancellations.top();
+    int trainIdx = findTrainIndex(sys, last.trainNo);
+    if (trainIdx == -1) {
+        cout << "[Error] Associated train #" << last.trainNo << " not found.\n";
+        return;
+    }
+
+    // Seat can only be restored if it is currently free (was not taken by auto-promotion or another booking)
+    if (sys.seatMap[trainIdx][last.seatNo - 1] == 0 && sys.trains[trainIdx].availableSeats > 0) {
+        sys.recentCancellations.pop(); // Pop from stack
+        sys.seatMap[trainIdx][last.seatNo - 1] = 1; // Mark re-booked
+        sys.trains[trainIdx].availableSeats--;
+        updateTrainSeats(db, last.trainNo, sys.trains[trainIdx].availableSeats);
+
+        // Update passenger status in memory and DB
+        int pIdx = findPassengerByPNR(sys, last.pnr);
+        if (pIdx != -1) {
+            sys.passengers[pIdx].status = "CONFIRMED";
+        }
+        updatePassengerStatus(db, last.pnr, "CONFIRMED");
+
+        cout << "\n[Success] Cancellation UNDONE successfully!\n";
+        cout << "Passenger " << last.name << " restored to Seat #" << last.seatNo
+             << " on Train #" << last.trainNo << " with PNR: " << last.pnr << ".\n";
+    } else {
+        cout << "\n[Error] Cannot undo cancellation for PNR " << last.pnr << ":\n"
+             << "Seat #" << last.seatNo << " has already been reallocated to a waiting passenger or another booking!\n";
+    }
 }
 
 // Displays available seat count and visual 2D seating layout for a train

@@ -1,10 +1,30 @@
-# Binaries and object files
+# Build Artifacts & Binaries
 *.exe
 *.o
 *.obj
+*.out
+*.dll
+*.so
+*.dylib
 
-# Local toolchain
+# SQLite Database & Cache Files
+*.db
+*.sqlite
+*.sqlite3
+*.db-journal
+*.db-wal
+*.db-shm
+
+# Local Toolchains & Environments
 w64devkit/
+.env
 
-# Test output
+# Editor & IDE Directories
+.vscode/
+.vs/
+.idea/
+*.suo
+*.user
+
+# Test Output Files
 test_output.txt

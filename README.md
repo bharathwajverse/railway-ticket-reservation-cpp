@@ -1,38 +1,96 @@
-# Railway Ticket Reservation System (Group 4)
+# 🚆 Railway Ticket Reservation System
 
-A modular, menu-driven C++11 console application for managing train schedules, reservations, ticket cancellations, seat layouts, and waiting lists using core Data Structures and Algorithms (DSA) connected to an SQLite database (`railway.db`).
+[![C++ Standard](https://img.shields.io/badge/C%2B%2B-11-blue.svg?logo=c%2B%2B)](https://isocpp.org/)
+[![Database](https://img.shields.io/badge/Database-SQLite%203-003B57.svg?logo=sqlite)](https://www.sqlite.org/)
+[![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20Linux%20%7C%20macOS-lightgrey.svg)]()
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Build Status](https://img.shields.io/badge/build-passing-brightgreen.svg)]()
 
----
-
-## 1. Project Overview
-- **Team:** Group 4
-- **Language:** C++11 (Procedural with `struct` and functions)
-- **Database:** SQLite 3 (Amalgamation C API)
-- **Design Philosophy:** In-memory DSA models for fast operations synchronized with relational storage for permanent persistence across restarts.
+A modular, menu-driven **C++11** backend application for managing railway reservations, seat layouts, cancellations, and waiting lists using core **Data Structures and Algorithms (DSA)** integrated with an **SQLite 3** relational database (`railway.db`).
 
 ---
 
-## 2. DSA Concept Mapping
+## 📌 Table of Contents
+- [Project Overview](#-project-overview)
+- [Architecture & Data Flow](#-architecture--data-flow)
+- [DSA Concepts Used](#-dsa-concepts-used)
+- [Key Features](#-key-features)
+- [Database Schema](#-database-schema)
+- [Project Structure](#-project-structure)
+- [Quick Start Guide](#-quick-start-guide)
+- [Edge Case Demonstrations](#-edge-case-demonstrations)
+- [Documentation & Viva Voce](#-documentation--viva-voce)
+- [License](#-license)
 
-| DSA Concept | Implementation Location | Purpose & Practical Use |
+---
+
+## 📖 Project Overview
+Designed as a first-year college DSA mini-project for **Group 4**, this application demonstrates the practical application of fundamental data structures (structures, 2D arrays, STL queues, vectors, maps) in a real-world scenario.
+
+### Core Design Philosophy
+- **Fast In-Memory Operations:** Active train models, 2D seat maps, and waiting queues operate entirely in RAM for high performance.
+- **Relational Persistence:** Every transaction (add train, seat booking, ticket cancellation, auto-promotion) is immediately synchronized to SQLite (`railway.db`).
+- **Complete Reconstitution:** On application launch, memory state (including the visual 2D seat layout and queue orders) is automatically rebuilt from the database.
+
+---
+
+## 🏛️ Architecture & Data Flow
+
+```mermaid
+flowchart TD
+    User([User / Console]) -->|Interactive Menu| Main[main.cpp]
+    Main -->|Menu Option Dispatch| Logic[railway.cpp]
+    Logic -->|Input Sanitization| Utils[utils.cpp]
+    Logic -->|Working Memory| Memory[In-Memory DSA Models\n- vector<Train>\n- 2D seatMap[20][60]\n- map<int, queue<WaitingEntry>>]
+    Logic -->|Prepared Statements| DB[database.cpp]
+    DB -->|SQL Queries| SQLite[(railway.db\nSQLite 3 File)]
+```
+
+---
+
+## 💡 DSA Concepts Used
+
+| DSA Concept | Source File | Real-World Application in System |
 |---|---|---|
-| **Structures (`struct`)** | `structures.h` (`Train`, `Passenger`, `WaitingEntry`, `Date`, `RailwaySystem`) | Groups heterogeneous attributes for each entity without OOP overhead. |
-| **Nested Structures** | `structures.h` (`Date` inside `Passenger` & `WaitingEntry`) | Encapsulates calendar dates (day, month, year) cleanly. |
-| **1D Arrays** | `utils.cpp` (`daysInMonth`), `railway.cpp` (`sampleList`) | Fast lookups for month day counts and initial seeding. |
-| **2D Arrays** | `RailwaySystem::seatMap[MAX_TRAINS][MAX_SEATS]` | Provides $O(1)$ random-access seat availability tracking (`0` = free, `1` = booked). |
-| **Strings** | `utils.cpp`, `railway.cpp` | Case-insensitive searching, substring pattern matching, and input sanitization. |
-| **Binary Search** | `railway.cpp::binarySearchTrain()` | Achieves $O(\log N)$ fast lookup for trains by train number on sorted vector. |
-| **Linear Search** | `railway.cpp::searchTrainByDestination()`, `findPassengerByPNR()` | $O(N)$ scanning for partial destination matches and PNR lookups. |
-| **Bubble Sort** | `railway.cpp::sortTrains()` | $O(N^2)$ manual sorting by ticket fare or train name on a copy vector for display. |
-| **FIFO Queue (`std::queue`)** | `RailwaySystem::waitingLists` | Maintains waiting lists in strict First-Come, First-Served order. |
-| **Associative Map (`std::map`)** | `RailwaySystem::waitingLists` | Maps `trainNo` $\to$ `queue<WaitingEntry>` for per-train queue isolation. |
-| **Dynamic Vector (`std::vector`)** | `RailwaySystem::trains`, `passengers` | Dynamic list management with index-based access. |
+| **Structures (`struct`)** | `structures.h` | Groups heterogeneous properties for entities (`Train`, `Passenger`, `WaitingEntry`). |
+| **Nested Structures** | `structures.h` | `struct Date` (day, month, year) nested inside passenger and queue records. |
+| **2D Arrays** | `railway.cpp` | `seatMap[MAX_TRAINS][MAX_SEATS]` provides $O(1)$ random access to check/mark seat availability. |
+| **1D Arrays** | `utils.cpp` | Static lookup array for calendar month days and leap year handling. |
+| **FIFO Queue (`std::queue`)** | `railway.cpp` | Maintains waiting passengers in strict First-In, First-Out order for fair promotions. |
+| **Map (`std::map`)** | `railway.cpp` | Associates each unique `trainNo` with its own isolated waiting queue. |
+| **Dynamic Vector (`std::vector`)** | `railway.cpp` | Dynamic storage for trains and passengers with index-based operations. |
+| **Binary Search** | `railway.cpp` | Achieves $O(\log N)$ fast lookup for trains by train number on a sorted vector. |
+| **Linear Search** | `railway.cpp` | $O(N)$ scanning for partial destination matches and PNR lookups. |
+| **Bubble Sort** | `railway.cpp` | Manual $O(N^2)$ sorting by fare or name on a copy vector for display. |
 
 ---
 
-## 3. Database Schema
+## ✨ Key Features
 
-The database uses a single file: `railway.db`.
+1. **Train Management:** Add new trains (inserted in sorted order), display formatted tables with departure times and fares.
+2. **Search Operations:**
+   - **Binary Search** by Train Number ($O(\log N)$).
+   - **Linear Search** by Destination (case-insensitive substring matching).
+3. **Smart Booking:**
+   - Visual seat allocation using the 2D seat map grid.
+   - Unique PNR generation starting from `1001`.
+   - Rejection of duplicate bookings (same name + train + travel date).
+4. **Waiting List System (FIFO Queue):**
+   - Automatically enqueues passengers to `WL-1`, `WL-2`, etc., when seats are full.
+5. **Cancellation & Auto-Promotion:**
+   - Cancelling a ticket immediately frees the seat.
+   - If passengers are waiting, the head of the queue (`front()`) is auto-promoted into the freed seat with a new confirmed PNR.
+6. **Visual 2D Seat Map:**
+   - Displays real-time seating grids (6 seats per row: `[ 1] [ 2] [XX] ...`).
+7. **Robust Input Validation:**
+   - Graceful recovery from non-numeric input (`cin.clear()` and `cin.ignore()`).
+   - Leap-year aware date verification.
+
+---
+
+## 🗄️ Database Schema
+
+The database uses a single portable file: `railway.db`.
 
 ```sql
 -- 1. Trains Table
@@ -76,75 +134,84 @@ CREATE TABLE IF NOT EXISTS waiting_list (
 
 ---
 
-## 4. Folder Structure
+## 📂 Project Structure
 
-```
-RailwayReservation/
-├── main.cpp          # Main menu loop and entry point
-├── structures.h      # Core structs and capacity constants
-├── utils.h           # Input validation and string helper declarations
-├── utils.cpp         # Input validation and string helper implementations
-├── database.h        # SQLite database interface declarations
-├── database.cpp      # SQLite database implementations (prepared statements)
-├── railway.h         # Railway business logic prototypes
-├── railway.cpp       # Train, booking, seat map, and queue operations
-├── sqlite3.c         # SQLite 3 official amalgamation C file
-├── sqlite3.h         # SQLite 3 official header
-├── sqlite3.o         # Compiled object file for rapid linking
-├── build.bat         # Single-command build script for Windows
-├── railway.exe       # Generated executable
-├── railway.db        # SQLite database file
-├── COMPLEXITY.md     # In-depth asymptotic complexity analysis
-├── VIVA_QA.md        # 40+ viva questions, answers, and 5-minute demo script
-└── README.md         # Project documentation and guide
+```text
+railway-ticket-reservation-cpp/
+├── .github/
+│   └── workflows/
+│       └── build.yml       # Automated GitHub Actions CI workflow
+├── main.cpp                # Main menu driver and program loop
+├── structures.h            # Data structures and system constants
+├── utils.h / utils.cpp     # Input validation, sanitization, and string tools
+├── database.h / database.cpp # SQLite API encapsulation with prepared statements
+├── railway.h / railway.cpp # Train, booking, seat map, and queue logic
+├── sqlite3.c / sqlite3.h   # SQLite 3 official amalgamation C source
+├── Makefile                # Cross-platform Makefile (Linux, macOS, MinGW)
+├── build.bat               # Windows one-click compilation script
+├── test_workflow.ps1       # Automated end-to-end test script
+├── array_queue_demo.cpp    # Bonus Module IX: Array-based circular queue
+├── COMPLEXITY.md           # Asymptotic time/space complexity analysis
+├── VIVA_QA.md              # 40+ curated viva voce questions & answers
+├── LICENSE                 # MIT Open-Source License
+└── README.md               # Project documentation
 ```
 
 ---
 
-## 5. How to Build and Run
+## 🚀 Quick Start Guide
 
-### On Windows (Included w64devkit MinGW)
-Simply run the included batch file:
+### Prerequisites
+- Any C++11 compliant compiler (`g++`, `clang++`, or MinGW).
+- Standard C runtime library.
+
+### Windows (Using `build.bat`)
 ```cmd
+# 1. Clone the repository
+git clone https://github.com/bharathwajverse/railway-ticket-reservation-cpp.git
+cd railway-ticket-reservation-cpp
+
+# 2. Build the project
 build.bat
+
+# 3. Run the application
 railway.exe
 ```
 
-Or run manual compilation:
-```cmd
-gcc -O2 -c sqlite3.c -o sqlite3.o
-g++ -std=c++11 -Wall -Wextra main.cpp utils.cpp database.cpp railway.cpp sqlite3.o -o railway.exe
-railway.exe
-```
-
-### On Linux / macOS
+### Linux / macOS (Using `Makefile`)
 ```bash
-gcc -O2 -c sqlite3.c -o sqlite3.o
-g++ -std=c++11 -Wall -Wextra main.cpp utils.cpp database.cpp railway.cpp sqlite3.o -o railway -lpthread -ldl
+# 1. Clone the repository
+git clone https://github.com/bharathwajverse/railway-ticket-reservation-cpp.git
+cd railway-ticket-reservation-cpp
+
+# 2. Compile using make
+make
+
+# 3. Launch application
 ./railway
 ```
 
 ---
 
-## 6. Demonstrated Edge Cases
+## 🧪 Edge Case Demonstrations
 
-1. **Full Train Booking $\to$ Automatic Waiting List:**
-   - Attempting to book a ticket when `availableSeats == 0` automatically enqueues the passenger at `WL-1` and stores the record in `waiting_list`.
-2. **Ticket Cancellation $\to$ Automatic FIFO Promotion:**
-   - Cancelling a confirmed ticket on a train with waiting passengers instantly dequeues (`pop()`) the first waiting passenger, assigns them the freed seat, allocates a new PNR, and marks them `CONFIRMED`.
-3. **Duplicate Prevention:**
-   - Rejects duplicate train numbers upon creation.
-   - Rejects duplicate passenger bookings with identical name and travel date on the same train.
-4. **Input Sanitization:**
-   - Robustly handles non-numeric inputs for numbers/dates without crashing or looping (`cin.clear()` + `cin.ignore()`).
+1. **Full Train $\to$ Waiting Queue:**
+   - Train `#10303` is pre-seeded with 3 seats. Booking 3 tickets fills the train. The 4th booking automatically transitions to `WL-1` in the train's queue.
+2. **Cancellation $\to$ Auto-Promotion:**
+   - Cancelling a confirmed ticket triggers `promoteFromWaitingList()`, promoting the waiting passenger to the newly freed seat with a new PNR in $O(1)$ queue time.
+3. **Duplicate Ticket Prevention:**
+   - Attempting to book the same passenger name on the same train and date is politely rejected.
+4. **Resilience to Bad Input:**
+   - Typing letters or symbols into numeric prompts (e.g., entering "abc" for Train Number) is safely intercepted without crashing.
 
 ---
 
-## 7. Team Contribution Table (Placeholders)
+## 📚 Documentation & Viva Voce
 
-| Member Name | Roll Number | Module / Responsibilities |
-|---|---|---|
-| Member 1 | ________________ | Project Scaffolding, `structures.h`, Input Validation (`utils.cpp`) |
-| Member 2 | ________________ | SQLite Database Integration & Prepared Statements (`database.cpp`) |
-| Member 3 | ________________ | Train Operations, Binary Search & Bubble Sort (`railway.cpp`) |
-| Member 4 | ________________ | Booking, 2D Seat Map, Cancellation & Waiting Queue Promotion |
+- **[COMPLEXITY.md](COMPLEXITY.md):** Complete asymptotic time and space complexity breakdown for all functions and algorithms.
+- **[VIVA_QA.md](VIVA_QA.md):** 40+ structured viva questions and answers covering C++ basics, structures, 2D arrays, STL queues, prepared statements, and a 5-minute presentation script.
+
+---
+
+## 📄 License
+This project is open-source under the [MIT License](LICENSE).

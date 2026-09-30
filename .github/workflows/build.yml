@@ -1,0 +1,52 @@
+name: C++ Build & Test
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  build-ubuntu:
+    name: Build on Ubuntu
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Compile SQLite Amalgamation
+        run: gcc -O2 -c sqlite3.c -o sqlite3.o
+
+      - name: Build Application
+        run: g++ -std=c++11 -Wall -Wextra main.cpp utils.cpp database.cpp railway.cpp sqlite3.o -o railway -lpthread -ldl
+
+      - name: Build Circular Queue Demo
+        run: g++ -std=c++11 -Wall -Wextra array_queue_demo.cpp -o array_queue_demo
+
+      - name: Test Execution
+        run: |
+          echo "0" | ./railway
+          ./array_queue_demo
+
+  build-windows:
+    name: Build on Windows
+    runs-on: windows-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup MinGW
+        uses: egor-tensin/setup-mingw@v2
+        with:
+          platform: x64
+
+      - name: Compile Application
+        run: |
+          gcc -O2 -c sqlite3.c -o sqlite3.o
+          g++ -std=c++11 -Wall -Wextra main.cpp utils.cpp database.cpp railway.cpp sqlite3.o -o railway.exe
+          g++ -std=c++11 -Wall -Wextra array_queue_demo.cpp -o array_queue_demo.exe
+
+      - name: Test Run
+        run: |
+          echo 0 | .\railway.exe
+          .\array_queue_demo.exe

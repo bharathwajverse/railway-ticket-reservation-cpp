@@ -148,8 +148,6 @@ railway-ticket-reservation-cpp/
 ├── sqlite3.c / sqlite3.h   # SQLite 3 official amalgamation C source
 ├── Makefile                # Cross-platform Makefile (Linux, macOS, MinGW)
 ├── build.bat               # Windows one-click compilation script
-├── COMPLEXITY.md           # Asymptotic time/space complexity analysis
-├── VIVA_QA.md              # 40+ curated viva voce questions & answers
 ├── LICENSE                 # MIT Open-Source License
 └── README.md               # Project documentation
 ```
@@ -200,13 +198,6 @@ make
    - Attempting to book the same passenger name on the same train and date is politely rejected.
 4. **Resilience to Bad Input:**
    - Typing letters or symbols into numeric prompts (e.g., entering "abc" for Train Number) is safely intercepted without crashing.
-
----
-
-## 📚 Documentation & Viva Voce
-
-- **[COMPLEXITY.md](COMPLEXITY.md):** Complete asymptotic time and space complexity breakdown for all functions and algorithms.
-- **[VIVA_QA.md](VIVA_QA.md):** 40+ structured viva questions and answers covering C++ basics, structures, 2D arrays, STL queues, prepared statements, and a 5-minute presentation script.
 
 ---
 

@@ -1482,7 +1482,23 @@ void displayMenu() {
   DESIGN RULE: Does NOT contain business logic. Only initializes database, loads working memory,
                runs the do-while menu loop, and safely closes the database connection.
 */
-int main() {
+int main(int argc, char* argv[]) {
+    // Command-line flag inspection
+    if (argc > 1) {
+        string arg = argv[1];
+        if (arg == "--version" || arg == "-v") {
+            cout << "Railway Ticket Reservation System v1.0.0 (C++11/SQLite3)\n";
+            cout << "Developed for B.Tech CSE (AI/ML) DSA Mini Project - Group 4\n";
+            return 0;
+        }
+        if (arg == "--help" || arg == "-h") {
+            cout << "Usage: railway.exe [OPTIONS]\n";
+            cout << "  --version, -v   Display software version and environment information\n";
+            cout << "  --help, -h      Display command-line help flags\n";
+            return 0;
+        }
+    }
+
     cout << "\n>>> Starting Railway Ticket Reservation System <<<\n";
 
     sqlite3* db = NULL;

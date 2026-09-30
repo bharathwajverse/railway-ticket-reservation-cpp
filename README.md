@@ -4,7 +4,7 @@
 [![Database](https://img.shields.io/badge/Database-SQLite%203-003B57.svg?logo=sqlite)](https://www.sqlite.org/)
 [![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20Linux%20%7C%20macOS-lightgrey.svg)]()
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Build Status](https://img.shields.io/badge/build-passing-brightgreen.svg)]()
+[![CI Build Status](https://github.com/bharathwajverse/railway-ticket-reservation-cpp/actions/workflows/build.yml/badge.svg)](https://github.com/bharathwajverse/railway-ticket-reservation-cpp/actions)
 
 A modular, menu-driven **C++11** backend application for managing railway reservations, seat layouts, cancellations, and waiting lists using core **Data Structures and Algorithms (DSA)** integrated with an **SQLite 3** relational database (`railway.db`).
 
@@ -19,7 +19,7 @@ A modular, menu-driven **C++11** backend application for managing railway reserv
 - [Project Structure](#-project-structure)
 - [Quick Start Guide](#-quick-start-guide)
 - [Edge Case Demonstrations](#-edge-case-demonstrations)
-- [Documentation & Viva Voce](#-documentation--viva-voce)
+- [Contributing & Community](#-contributing--community)
 - [License](#-license)
 
 ---
@@ -142,14 +142,22 @@ CREATE TABLE IF NOT EXISTS waiting_list (
 ```text
 railway-ticket-reservation-cpp/
 ├── .github/
+│   ├── ISSUE_TEMPLATE/
+│   │   ├── bug_report.md       # Pre-formatted bug report issue template
+│   │   └── feature_request.md  # Idea and algorithm proposal template
+│   ├── pull_request_template.md # Contribution PR checklist
 │   └── workflows/
-│       └── build.yml       # Automated GitHub Actions CI workflow
-├── main.cpp                # Complete, all-in-one C++ source file with instructional comments
-├── sqlite3.c / sqlite3.h   # SQLite 3 official amalgamation C source
-├── Makefile                # Cross-platform Makefile (Linux, macOS, MinGW)
-├── build.bat               # Windows one-click compilation script
-├── LICENSE                 # MIT Open-Source License
-└── README.md               # Project documentation
+│       └── build.yml           # Automated multi-platform CI build pipeline
+├── main.cpp                    # Complete, all-in-one C++ application with clear comments
+├── sqlite3.c / sqlite3.h       # Official SQLite 3 amalgamation C source
+├── run.bat                     # Single-click Windows compile & launch script
+├── build.bat                   # Single-command Windows build script
+├── Makefile                    # Single-command Linux/macOS build script
+├── CHANGELOG.md                # Semantic versioning release history
+├── CONTRIBUTING.md             # Contribution guidelines & coding standards
+├── CODE_OF_CONDUCT.md          # Contributor Covenant Code of Conduct
+├── LICENSE                     # MIT Open-Source License
+└── README.md                   # Project documentation
 ```
 
 ---
@@ -160,16 +168,16 @@ railway-ticket-reservation-cpp/
 - Any C++11 compliant compiler (`g++`, `clang++`, or MinGW).
 - Standard C runtime library.
 
-### Windows (Using `build.bat`)
+### Windows (Simplest: Single-Click Launcher)
+Just double-click **`run.bat`** (or execute from terminal):
 ```cmd
-# 1. Clone the repository
-git clone https://github.com/bharathwajverse/railway-ticket-reservation-cpp.git
-cd railway-ticket-reservation-cpp
+run.bat
+```
+*(If `railway.exe` is not yet compiled, `run.bat` compiles it automatically and launches the application).*
 
-# 2. Build the project
+Or manual build:
+```cmd
 build.bat
-
-# 3. Run the application
 railway.exe
 ```
 
@@ -200,10 +208,19 @@ railway.exe --help      # Displays command-line argument help
    - Train `#10303` is pre-seeded with 3 seats. Booking 3 tickets fills the train. The 4th booking automatically transitions to `WL-1` in the train's queue.
 2. **Cancellation $\to$ Auto-Promotion:**
    - Cancelling a confirmed ticket triggers `promoteFromWaitingList()`, promoting the waiting passenger to the newly freed seat with a new PNR in $O(1)$ queue time.
-3. **Duplicate Ticket Prevention:**
+3. **Recent Cancellations & Undo (Stack):**
+   - Push cancelled tickets onto a LIFO stack. View the most recently cancelled ticket and restore/undo the cancellation if the seat remains vacant.
+4. **Duplicate Ticket Prevention:**
    - Attempting to book the same passenger name on the same train and date is politely rejected.
-4. **Resilience to Bad Input:**
+5. **Resilience to Bad Input:**
    - Typing letters or symbols into numeric prompts (e.g., entering "abc" for Train Number) is safely intercepted without crashing.
+
+---
+
+## 🤝 Contributing & Community
+- Review our [Contributing Guidelines](CONTRIBUTING.md) to propose enhancements or algorithms.
+- Read our [Code of Conduct](CODE_OF_CONDUCT.md) for community standards.
+- Check [CHANGELOG.md](CHANGELOG.md) for full release history.
 
 ---
 

@@ -5,6 +5,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ---
 
+## [2.0.0] - 2026-09-30
+### Added
+- Embedded Native Winsock HTTP Server (Port 8080) for zero-dependency web access.
+- Modern Responsive Web Dashboard (`web/index.html`) with interactive seat grid and live concession calculator.
+- Comprehensive REST API endpoints (`/api/trains`, `/api/seats`, `/api/pnr`, `/api/stats`, `/api/manifest`, `/api/ticket`, `/api/book`, `/api/cancel`).
+- Age-based fare concessions (Child 50% discount, Senior Citizen 40% discount).
+- Electronic ticket text file export (`ticket_<PNR>.txt`) via `std::ofstream`.
+- Manual seat selection option with visual coach seat map alongside auto-assign.
+- Direct cancellation of waiting list entries from FIFO queue and SQLite database.
+- Role-based separation into Passenger Portal and PIN-protected Administrator Portal (`admin123`).
+- Executive Analytics Dashboard (Revenue, Bookings, Waitlist, Occupancy).
+- Atomic SQLite transactions (`BEGIN IMMEDIATE TRANSACTION;` / `COMMIT;` / `ROLLBACK;`) for ACID consistency.
+
+---
+
 ## [1.2.0] - 2026-09-30
 ### Added
 - Unified all application logic into a single clean file (`main.cpp`) for transparent code defense.

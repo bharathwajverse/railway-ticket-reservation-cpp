@@ -10,13 +10,15 @@
     - STL Containers allowed: vector, queue, map, stack, string.
     - Manual DSA: Binary Search, Linear Search, Bubble Sort written from scratch.
     - Dual Storage: Fast in-memory working models (vector, 2D array, queue) synchronized with SQLite 3.
+    - Dual Interface: Interactive Terminal Kiosk (Console) + Embedded C++ Winsock HTTP Server (Web UI).
   
   TABLE OF CONTENTS:
     SECTION 1: SYSTEM CONSTANTS & DATA STRUCTURES (Date, Train, Passenger, WaitingEntry, RailwaySystem)
-    SECTION 2: INPUT VALIDATION & STRING UTILITIES (Robust cin handling, leap year check, pattern match)
-    SECTION 3: SQLITE DATABASE LAYER (Prepared statements, CRUD operations, state persistence)
-    SECTION 4: CORE RAILWAY BUSINESS LOGIC & DSA ALGORITHMS (Add, Search, Bubble Sort, Book, Cancel, Queue)
-    SECTION 5: MAIN MENU & SYSTEM ENTRY POINT (do-while menu loop, switch dispatch, clean lifecycle)
+    SECTION 2: INPUT VALIDATION & BUSINESS LOGIC UTILITIES (Date checks, concessions, e-ticket export)
+    SECTION 3: SQLITE DATABASE LAYER & ATOMIC TRANSACTIONS (CRUD operations, prepared stmts, ACID blocks)
+    SECTION 4: CORE RAILWAY DSA ALGORITHMS (Binary Search, Bubble Sort, Seat Matrix, FIFO Queue, LIFO Stack)
+    SECTION 5: EMBEDDED WINSOCK HTTP SERVER & REST API (Port 8080, HTML5/CSS3/JS Web Interface)
+    SECTION 6: PORTAL MENUS & MAIN ENTRY POINT (Passenger Portal, Admin Portal, Web Server Launcher)
   ========================================================================================================
 */
 
@@ -29,9 +31,33 @@
 #include <iomanip>
 #include <cctype>
 #include <cstdlib>
+#include <fstream>
+#include <sstream>
+#include <thread>
+#include <mutex>
 #include "sqlite3.h"
 
+// Cross-Platform Socket Headers (Windows Winsock2 vs. POSIX Sockets)
+#ifdef _WIN32
+    #include <winsock2.h>
+    #include <ws2tcpip.h>
+    typedef int socklen_t;
+    #define CLOSE_SOCKET(s) closesocket(s)
+#else
+    #include <sys/socket.h>
+    #include <netinet/in.h>
+    #include <arpa/inet.h>
+    #include <unistd.h>
+    typedef int SOCKET;
+    #define INVALID_SOCKET (-1)
+    #define SOCKET_ERROR (-1)
+    #define CLOSE_SOCKET(s) close(s)
+#endif
+
 using namespace std;
+
+// Global Mutex for thread-safe concurrent access between Terminal Kiosk and Web Server
+std::mutex g_sysMutex;
 
 // ========================================================================================================
 // SECTION 1: SYSTEM CONSTANTS & DATA STRUCTURES (MODULE VI & IV)
@@ -83,9 +109,10 @@ struct Train {
 /*
   STRUCTURE: Passenger
   PURPOSE: Represents a confirmed or cancelled passenger ticket.
-  ATTRIBUTES: Unique PNR, name, age, gender, trainNo, seatNo, travelDate, status ("CONFIRMED"/"CANCELLED").
+  ATTRIBUTES: Unique PNR, name, age, gender, trainNo, seatNo, travelDate, status, concession, farePaid.
   HOW TO EXPLAIN TO PROFESSOR:
-  "Sir, each ticket issued generates a Passenger structure with a unique PNR and assigned seat."
+  "Sir, each ticket issued generates a Passenger structure with a unique PNR, assigned seat,
+   calculated age-based concession tier, and final fare paid."
 */
 struct Passenger {
     int pnr;
@@ -95,7 +122,9 @@ struct Passenger {
     int trainNo;
     int seatNo;
     Date travelDate;
-    string status; // "CONFIRMED" or "CANCELLED"
+    string status;      // "CONFIRMED" or "CANCELLED"
+    string concession;  // "GENERAL", "CHILD (50% OFF)", "SENIOR CITIZEN (40% OFF)"
+    float farePaid;     // Final fare paid after concession
 };
 
 /*
@@ -103,7 +132,7 @@ struct Passenger {
   PURPOSE: Represents a passenger placed on the waiting list when a train is full.
   HOW TO EXPLAIN TO PROFESSOR:
   "Sir, when all seats are full, passengers do not get a seat number immediately.
-   Instead, they are queued as a WaitingEntry in First-Come, First-Served order."
+   Instead, they are queued as a WaitingEntry in First-Come, First-Served (FIFO) order."
 */
 struct WaitingEntry {
     int waitId;
@@ -112,6 +141,19 @@ struct WaitingEntry {
     char gender;
     int trainNo;
     Date travelDate;
+};
+
+/*
+  STRUCTURE: SystemStats
+  PURPOSE: Encapsulates executive summary analytics for the Admin Portal and Web Dashboard.
+*/
+struct SystemStats {
+    int totalTrains;
+    int totalBookings;
+    int confirmedBookings;
+    int cancelledBookings;
+    int totalWaitlisted;
+    float totalRevenue;
 };
 
 /*
@@ -137,7 +179,7 @@ struct RailwaySystem {
 
 
 // ========================================================================================================
-// SECTION 2: INPUT VALIDATION & STRING UTILITY FUNCTIONS (MODULES I, II & V)
+// SECTION 2: INPUT VALIDATION & BUSINESS LOGIC UTILITIES (MODULES I, II & V)
 // ========================================================================================================
 
 /*
@@ -181,7 +223,6 @@ bool isValidDate(int day, int month, int year) {
   FUNCTION: toLowerCase
   PURPOSE: Converts a string to all lowercase characters manually.
   TIME COMPLEXITY: O(N) where N is length of string.
-  HOW TO EXPLAIN: "We iterate character by character and convert each using tolower() from cctype."
 */
 string toLowerCase(const string& str) {
     string result = "";
@@ -195,157 +236,65 @@ string toLowerCase(const string& str) {
   FUNCTION: containsIgnoreCase
   PURPOSE: Performs case-insensitive substring pattern matching without using regex.
   TIME COMPLEXITY: O(N * M) where N = text length, M = pattern length.
-  HOW TO EXPLAIN: "Sir, this implements manual substring matching so searching 'mumb' matches 'Mumbai'."
 */
 bool containsIgnoreCase(const string& text, const string& pattern) {
     string lowerText = toLowerCase(text);
     string lowerPattern = toLowerCase(pattern);
-
-    if (lowerPattern.length() == 0) {
-        return true;
-    }
-    if (lowerPattern.length() > lowerText.length()) {
-        return false;
-    }
-
-    for (size_t i = 0; i <= lowerText.length() - lowerPattern.length(); i++) {
-        bool match = true;
-        for (size_t j = 0; j < lowerPattern.length(); j++) {
-            if (lowerText[i + j] != lowerPattern[j]) {
-                match = false;
-                break;
-            }
-        }
-        if (match) {
-            return true;
-        }
-    }
-    return false;
+    return lowerText.find(lowerPattern) != string::npos;
 }
 
 /*
   FUNCTION: readInt
-  PURPOSE: Reads an integer within [minVal, maxVal], safely handling non-numeric bad input.
-  TIME COMPLEXITY: O(1) per valid attempt.
-  HOW TO EXPLAIN: "If the user types letters instead of numbers, cin.clear() resets the error state,
-   and cin.ignore() flushes bad characters from the stream to prevent infinite loops."
+  PURPOSE: Robust integer reader that clears bad stream state and verifies range bounds.
 */
 int readInt(const string& prompt, int minVal, int maxVal) {
-    int value = 0;
+    int value;
     while (true) {
         cout << prompt;
         if (cin >> value) {
             if (value >= minVal && value <= maxVal) {
-                cin.ignore(10000, '\n'); // Clear remaining newline
+                // Clear remaining newline character from input buffer
+                string dummy;
+                getline(cin, dummy);
                 return value;
-            } else {
-                cout << "[Error] Input must be between " << minVal << " and " << maxVal << ". Try again.\n";
             }
+            cout << "[Error] Input out of range! Please enter a value between " 
+                 << minVal << " and " << maxVal << ".\n";
         } else {
-            cout << "[Error] Invalid input! Please enter a whole number.\n";
-            cin.clear();            // Reset cin error state
-            cin.ignore(10000, '\n'); // Discard invalid characters
+            cout << "[Error] Invalid input! Please enter a numeric integer.\n";
+            cin.clear(); // Reset cin error state
+            string badInput;
+            cin >> badInput; // Discard invalid token
         }
     }
 }
 
 /*
-  FUNCTION: readFloat
-  PURPOSE: Reads a float within [minVal, maxVal], handling invalid characters gracefully.
-  TIME COMPLEXITY: O(1) per valid attempt.
+  FUNCTION: readNonEmptyString
+  PURPOSE: Prompts user until a non-empty, non-whitespace string is entered.
 */
-float readFloat(const string& prompt, float minVal, float maxVal) {
-    float value = 0.0f;
+string readNonEmptyString(const string& prompt) {
+    string value;
     while (true) {
         cout << prompt;
-        if (cin >> value) {
-            if (value >= minVal && value <= maxVal) {
-                cin.ignore(10000, '\n');
-                return value;
-            } else {
-                cout << "[Error] Value must be between " << minVal << " and " << maxVal << ". Try again.\n";
-            }
-        } else {
-            cout << "[Error] Invalid input! Please enter a decimal number.\n";
-            cin.clear();
-            cin.ignore(10000, '\n');
+        getline(cin, value);
+        // Trim leading and trailing whitespace
+        size_t start = value.find_first_not_of(" \t\r\n");
+        size_t end = value.find_last_not_of(" \t\r\n");
+        if (start != string::npos && end != string::npos) {
+            return value.substr(start, end - start + 1);
         }
-    }
-}
-
-/*
-  FUNCTION: readName
-  PURPOSE: Reads a non-empty name string containing only alphabetical letters and spaces.
-  TIME COMPLEXITY: O(N) where N is length of the string.
-  HOW TO EXPLAIN: "Uses getline() to allow spaces, trims leading/trailing whitespace, and verifies isalpha()."
-*/
-string readName(const string& prompt) {
-    string name = "";
-    while (true) {
-        cout << prompt;
-        getline(cin, name);
-
-        // Trim leading and trailing whitespace manually
-        size_t start = 0;
-        while (start < name.length() && isspace(name[start])) {
-            start++;
-        }
-        size_t end = name.length();
-        while (end > start && isspace(name[end - 1])) {
-            end--;
-        }
-
-        if (start >= end) {
-            cout << "[Error] Name cannot be blank. Try again.\n";
-            continue;
-        }
-
-        string trimmed = name.substr(start, end - start);
-        bool valid = true;
-        for (size_t i = 0; i < trimmed.length(); i++) {
-            if (!isalpha(trimmed[i]) && !isspace(trimmed[i])) {
-                valid = false;
-                break;
-            }
-        }
-
-        if (!valid) {
-            cout << "[Error] Name must contain letters and spaces only. Try again.\n";
-            continue;
-        }
-
-        return trimmed;
-    }
-}
-
-/*
-  FUNCTION: readGender
-  PURPOSE: Reads gender as 'M', 'F', or 'O'.
-  TIME COMPLEXITY: O(1)
-*/
-char readGender(const string& prompt) {
-    string input = "";
-    while (true) {
-        cout << prompt;
-        getline(cin, input);
-        if (input.length() == 1) {
-            char g = (char)toupper(input[0]);
-            if (g == 'M' || g == 'F' || g == 'O') {
-                return g;
-            }
-        }
-        cout << "[Error] Please enter 'M' (Male), 'F' (Female), or 'O' (Other).\n";
+        cout << "[Error] Input cannot be blank! Please enter a valid text value.\n";
     }
 }
 
 /*
   FUNCTION: readDate
-  PURPOSE: Interactively reads day, month, and year, verifying real calendar validity.
-  TIME COMPLEXITY: O(1)
+  PURPOSE: Prompts user to input day, month, and year and validates them.
 */
 Date readDate(const string& prompt) {
-    Date d;
     cout << prompt << "\n";
+    Date d;
     while (true) {
         d.day = readInt("  Enter Day (1-31): ", 1, 31);
         d.month = readInt("  Enter Month (1-12): ", 1, 12);
@@ -359,9 +308,89 @@ Date readDate(const string& prompt) {
     }
 }
 
+/*
+  FUNCTION: calculateConcession
+  PURPOSE: Computes fare discount based on age categories.
+  RULES:
+    - Child (< 12 years): 50% discount
+    - Senior Citizen (>= 60 years): 40% discount
+    - General (12 - 59 years): 0% discount (full fare)
+  HOW TO EXPLAIN TO PROFESSOR:
+  "Sir, this implements dynamic business rules. The function takes the passenger's age
+   and train base fare, then calculates the discount tier and final payable fare."
+*/
+void calculateConcession(int age, float baseFare, string& concession, float& finalFare) {
+    if (age < 12) {
+        concession = "CHILD (50% OFF)";
+        finalFare = baseFare * 0.50f;
+    } else if (age >= 60) {
+        concession = "SENIOR CITIZEN (40% OFF)";
+        finalFare = baseFare * 0.60f;
+    } else {
+        concession = "GENERAL";
+        finalFare = baseFare;
+    }
+}
+
+/*
+  FUNCTION: exportTicketToFile
+  PURPOSE: Generates a formatted official electronic ticket slip (ticket_<PNR>.txt) using <fstream>.
+  HOW TO EXPLAIN TO PROFESSOR:
+  "Sir, this implements File Output Streams (Module V - <fstream>). When a ticket is
+   confirmed, it serializes the booking receipt into a persistent text file on disk."
+*/
+bool exportTicketToFile(const Passenger& p, const Train& t) {
+    string fileName = "ticket_" + to_string(p.pnr) + ".txt";
+    ofstream fout(fileName.c_str());
+    if (!fout.is_open()) {
+        return false;
+    }
+
+    float discount = t.fare - p.farePaid;
+    if (discount < 0.0f) discount = 0.0f;
+
+    // Berth type deduction
+    string berth = "Middle";
+    if (p.seatNo % 4 == 1) berth = "Window (Lower)";
+    else if (p.seatNo % 4 == 2) berth = "Aisle";
+    else if (p.seatNo % 4 == 3) berth = "Middle";
+    else berth = "Window (Upper)";
+
+    fout << "======================================================================\n";
+    fout << "                    INDIAN RAILWAY PASSENGER RESERVATION               \n";
+    fout << "                           ELECTRONIC RESERVATION SLIP                 \n";
+    fout << "======================================================================\n";
+    fout << "PNR NUMBER        : " << p.pnr << "\n";
+    fout << "BOOKING STATUS    : " << p.status << "\n";
+    fout << "PASSENGER NAME    : " << p.name << "\n";
+    fout << "AGE / GENDER      : " << p.age << " yrs / " << p.gender << "\n";
+    fout << "CONCESSION TIER   : " << p.concession << "\n";
+    fout << "----------------------------------------------------------------------\n";
+    fout << "TRAIN NUMBER      : " << t.trainNo << "\n";
+    fout << "TRAIN NAME        : " << t.name << "\n";
+    fout << "JOURNEY ROUTE     : " << t.source << " --> " << t.destination << "\n";
+    fout << "SCHEDULED DEPART  : " << t.departure << "\n";
+    fout << "TRAVEL DATE       : " << setfill('0') << setw(2) << p.travelDate.day << "/"
+                                  << setfill('0') << setw(2) << p.travelDate.month << "/"
+                                  << p.travelDate.year << setfill(' ') << "\n";
+    fout << "ALLOCATED SEAT    : Coach C1, Seat #" << p.seatNo << " (" << berth << ")\n";
+    fout << "----------------------------------------------------------------------\n";
+    fout << "BASE TRAIN FARE   : Rs. " << fixed << setprecision(2) << t.fare << "\n";
+    fout << "CONCESSION SAVINGS: Rs. " << fixed << setprecision(2) << discount << "\n";
+    fout << "TOTAL FARE CHARGED: Rs. " << fixed << setprecision(2) << p.farePaid << "\n";
+    fout << "PAYMENT MODE      : ELECTRONIC CONFIRMED (ACID COMPLIANT)\n";
+    fout << "======================================================================\n";
+    fout << "  Please carry a valid Original Photo ID proof during the journey.   \n";
+    fout << "          Wish you a happy and comfortable journey!                  \n";
+    fout << "======================================================================\n";
+
+    fout.close();
+    return true;
+}
+
 
 // ========================================================================================================
-// SECTION 3: SQLITE DATABASE LAYER (BACKEND PERSISTENCE)
+// SECTION 3: SQLITE DATABASE LAYER & ATOMIC TRANSACTIONS (BACKEND PERSISTENCE)
 // ========================================================================================================
 
 /*
@@ -394,6 +423,37 @@ void closeDatabase(sqlite3* db) {
     }
 }
 
+// Atomic SQLite Transaction Helpers
+bool beginTransaction(sqlite3* db) {
+    char* err = NULL;
+    int rc = sqlite3_exec(db, "BEGIN IMMEDIATE TRANSACTION;", NULL, NULL, &err);
+    if (rc != SQLITE_OK) {
+        if (err) sqlite3_free(err);
+        return false;
+    }
+    return true;
+}
+
+bool commitTransaction(sqlite3* db) {
+    char* err = NULL;
+    int rc = sqlite3_exec(db, "COMMIT;", NULL, NULL, &err);
+    if (rc != SQLITE_OK) {
+        if (err) sqlite3_free(err);
+        return false;
+    }
+    return true;
+}
+
+bool rollbackTransaction(sqlite3* db) {
+    char* err = NULL;
+    int rc = sqlite3_exec(db, "ROLLBACK;", NULL, NULL, &err);
+    if (rc != SQLITE_OK) {
+        if (err) sqlite3_free(err);
+        return false;
+    }
+    return true;
+}
+
 // Creates the 3 essential relational tables: trains, passengers, waiting_list
 bool createTables(sqlite3* db) {
     const char* sql = 
@@ -417,7 +477,9 @@ bool createTables(sqlite3* db) {
         "  day INTEGER NOT NULL,"
         "  month INTEGER NOT NULL,"
         "  year INTEGER NOT NULL,"
-        "  status TEXT NOT NULL"
+        "  status TEXT NOT NULL,"
+        "  concession TEXT DEFAULT 'GENERAL',"
+        "  fare_paid REAL DEFAULT 0.0"
         ");"
         "CREATE TABLE IF NOT EXISTS waiting_list ("
         "  wait_id INTEGER PRIMARY KEY AUTOINCREMENT,"
@@ -437,6 +499,10 @@ bool createTables(sqlite3* db) {
         sqlite3_free(errMsg);
         return false;
     }
+
+    // Dynamic schema migrations for existing databases
+    sqlite3_exec(db, "ALTER TABLE passengers ADD COLUMN concession TEXT DEFAULT 'GENERAL';", NULL, NULL, NULL);
+    sqlite3_exec(db, "ALTER TABLE passengers ADD COLUMN fare_paid REAL DEFAULT 0.0;", NULL, NULL, NULL);
     return true;
 }
 
@@ -462,7 +528,7 @@ bool insertTrain(sqlite3* db, const Train& t) {
     return (rc == SQLITE_DONE);
 }
 
-// Updates available seat count for a train
+// Updates available seats count of a train in database
 bool updateTrainSeats(sqlite3* db, int trainNo, int availableSeats) {
     const char* sql = "UPDATE trains SET available_seats = ? WHERE train_no = ?;";
     sqlite3_stmt* stmt = NULL;
@@ -504,8 +570,8 @@ bool loadTrains(sqlite3* db, vector<Train>& trains) {
 
 // Inserts a new booked passenger record into database
 bool insertPassenger(sqlite3* db, const Passenger& p) {
-    const char* sql = "INSERT INTO passengers (pnr, name, age, gender, train_no, seat_no, day, month, year, status) "
-                      "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);";
+    const char* sql = "INSERT INTO passengers (pnr, name, age, gender, train_no, seat_no, day, month, year, status, concession, fare_paid) "
+                      "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);";
     sqlite3_stmt* stmt = NULL;
     int rc = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
     if (rc != SQLITE_OK) return false;
@@ -521,6 +587,8 @@ bool insertPassenger(sqlite3* db, const Passenger& p) {
     sqlite3_bind_int(stmt, 8, p.travelDate.month);
     sqlite3_bind_int(stmt, 9, p.travelDate.year);
     sqlite3_bind_text(stmt, 10, p.status.c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 11, p.concession.c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_double(stmt, 12, (double)p.farePaid);
 
     rc = sqlite3_step(stmt);
     sqlite3_finalize(stmt);
@@ -545,7 +613,8 @@ bool updatePassengerStatus(sqlite3* db, int pnr, const string& status) {
 // Loads all passenger records from database
 bool loadPassengers(sqlite3* db, vector<Passenger>& list) {
     list.clear();
-    const char* sql = "SELECT pnr, name, age, gender, train_no, seat_no, day, month, year, status "
+    const char* sql = "SELECT pnr, name, age, gender, train_no, seat_no, day, month, year, status, "
+                      "COALESCE(concession, 'GENERAL'), COALESCE(fare_paid, 0.0) "
                       "FROM passengers ORDER BY pnr ASC;";
     sqlite3_stmt* stmt = NULL;
     int rc = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
@@ -564,6 +633,9 @@ bool loadPassengers(sqlite3* db, vector<Passenger>& list) {
         p.travelDate.month = sqlite3_column_int(stmt, 7);
         p.travelDate.year = sqlite3_column_int(stmt, 8);
         p.status = (const char*)sqlite3_column_text(stmt, 9);
+        const char* conc = (const char*)sqlite3_column_text(stmt, 10);
+        p.concession = (conc != NULL) ? conc : "GENERAL";
+        p.farePaid = (float)sqlite3_column_double(stmt, 11);
         list.push_back(p);
     }
     sqlite3_finalize(stmt);
@@ -588,16 +660,14 @@ bool insertWaiting(sqlite3* db, WaitingEntry& w) {
     sqlite3_bind_int(stmt, 7, w.travelDate.year);
 
     rc = sqlite3_step(stmt);
-    sqlite3_finalize(stmt);
-
     if (rc == SQLITE_DONE) {
         w.waitId = (int)sqlite3_last_insert_rowid(db);
-        return true;
     }
-    return false;
+    sqlite3_finalize(stmt);
+    return (rc == SQLITE_DONE);
 }
 
-// Deletes a waiting passenger record when they get auto-promoted or cancelled
+// Deletes a promoted or cancelled passenger from waiting_list table
 bool deleteWaiting(sqlite3* db, int waitId) {
     const char* sql = "DELETE FROM waiting_list WHERE wait_id = ?;";
     sqlite3_stmt* stmt = NULL;
@@ -610,9 +680,9 @@ bool deleteWaiting(sqlite3* db, int waitId) {
     return (rc == SQLITE_DONE);
 }
 
-// Loads waiting lists into memory ordered by wait_id to preserve exact FIFO order
-bool loadWaiting(sqlite3* db, map<int, queue<WaitingEntry> >& lists) {
-    lists.clear();
+// Loads waiting lists grouped by train_no in FIFO order
+bool loadWaitingList(sqlite3* db, map<int, queue<WaitingEntry> >& waitingLists) {
+    waitingLists.clear();
     const char* sql = "SELECT wait_id, name, age, gender, train_no, day, month, year "
                       "FROM waiting_list ORDER BY wait_id ASC;";
     sqlite3_stmt* stmt = NULL;
@@ -630,9 +700,7 @@ bool loadWaiting(sqlite3* db, map<int, queue<WaitingEntry> >& lists) {
         w.travelDate.day = sqlite3_column_int(stmt, 5);
         w.travelDate.month = sqlite3_column_int(stmt, 6);
         w.travelDate.year = sqlite3_column_int(stmt, 7);
-
-        // Enqueue into the queue corresponding to this train
-        lists[w.trainNo].push(w);
+        waitingLists[w.trainNo].push(w); // FIFO queue push
     }
     sqlite3_finalize(stmt);
     return true;
@@ -640,180 +708,116 @@ bool loadWaiting(sqlite3* db, map<int, queue<WaitingEntry> >& lists) {
 
 
 // ========================================================================================================
-// SECTION 4: CORE RAILWAY BUSINESS LOGIC & DSA ALGORITHMS (MODULES III, IV, VII, VIII, IX & X)
+// SECTION 4: CORE RAILWAY DSA ALGORITHMS (MODULES III, IV, VII & VIII)
 // ========================================================================================================
 
 /*
-  FUNCTION: seedSampleTrains
-  PURPOSE: Pre-seeds 4 initial realistic trains with small seat counts (3 to 5 seats).
-  WHY: Enables fast testing and instant demonstration of full-train edge cases and queues.
-  TIME COMPLEXITY: O(1)
-*/
-void seedSampleTrains(RailwaySystem& sys, sqlite3* db) {
-    if (!sys.trains.empty()) {
-        return; // Already populated
-    }
-
-    Train t1 = { 10101, "Rajdhani Express", "Delhi", "Mumbai", "06:00", 4, 4, 1500.0f };
-    Train t2 = { 10202, "Vande Bharat", "Chennai", "Bangalore", "05:45", 5, 5, 950.0f };
-    Train t3 = { 10303, "Shatabdi Express", "Kolkata", "Patna", "07:15", 3, 3, 750.0f };
-    Train t4 = { 10404, "Tejas Express", "Ahmedabad", "Mumbai", "15:30", 4, 4, 1100.0f };
-
-    Train sampleList[] = { t1, t2, t3, t4 };
-    for (int i = 0; i < 4; i++) {
-        insertTrain(db, sampleList[i]);
-        sys.trains.push_back(sampleList[i]);
-    }
-}
-
-/*
   FUNCTION: binarySearchTrain
-  PURPOSE: Performs iterative Binary Search to find a train index by trainNo.
-  TIME COMPLEXITY: O(log N)
+  PURPOSE: Locates a train in the sorted trains vector in O(log N) time.
+  TIME COMPLEXITY: O(log N) where N is number of trains.
   HOW TO EXPLAIN TO PROFESSOR:
-  "Sir, because the trains vector is maintained in sorted order by trainNo,
-   we divide the search space in half at each iteration, achieving O(log N) lookup."
+  "Sir, binary search requires the vector to be sorted by trainNo. At each step,
+   we compare the target with the middle element and eliminate half of the search space."
 */
 int binarySearchTrain(const vector<Train>& trains, int trainNo) {
     int low = 0;
     int high = (int)trains.size() - 1;
 
     while (low <= high) {
-        int mid = low + (high - low) / 2;
+        int mid = low + (high - low) / 2; // Prevents integer overflow
         if (trains[mid].trainNo == trainNo) {
-            return mid; // Found at index mid
-        } else if (trains[mid].trainNo < trainNo) {
+            return mid; // Target found
+        }
+        if (trains[mid].trainNo < trainNo) {
             low = mid + 1; // Search right half
         } else {
             high = mid - 1; // Search left half
         }
     }
-    return -1; // Train not found
+    return -1; // Target does not exist
 }
 
-/*
-  FUNCTION: findTrainIndex
-  PURPOSE: Helper that wraps binarySearchTrain for RailwaySystem.
-  TIME COMPLEXITY: O(log N)
-*/
+// Wrapper to search train in system
 int findTrainIndex(const RailwaySystem& sys, int trainNo) {
     return binarySearchTrain(sys.trains, trainNo);
 }
 
 /*
-  FUNCTION: loadSystem
-  PURPOSE: Restores entire in-memory working state from SQLite upon application launch.
-  KEY OPERATIONS:
-    1. Zeroes out 2D seatMap.
-    2. Loads trains, passengers, and waiting lists from database.
-    3. Reconstructs seatMap by marking confirmed passenger seats as 1 (booked).
-  TIME COMPLEXITY: O(T + P + W)
+  FUNCTION: insertTrainSorted
+  PURPOSE: Inserts a new train into vector while maintaining sorted order by trainNo.
+  TIME COMPLEXITY: O(N) due to vector element shifting.
 */
-void loadSystem(RailwaySystem& sys, sqlite3* db) {
-    for (int i = 0; i < MAX_TRAINS; i++) {
-        for (int j = 0; j < MAX_SEATS; j++) {
-            sys.seatMap[i][j] = 0; // Initialize all seats as free
-        }
+void insertTrainSorted(vector<Train>& trains, const Train& t) {
+    size_t i = 0;
+    while (i < trains.size() && trains[i].trainNo < t.trainNo) {
+        i++;
     }
-
-    loadTrains(db, sys.trains);
-    seedSampleTrains(sys, db);
-    loadPassengers(db, sys.passengers);
-    loadWaiting(db, sys.waitingLists);
-
-    // Reconstruct 2D seatMap from confirmed passengers
-    for (size_t i = 0; i < sys.passengers.size(); i++) {
-        if (sys.passengers[i].status == "CONFIRMED") {
-            int trainIdx = findTrainIndex(sys, sys.passengers[i].trainNo);
-            int seatIdx = sys.passengers[i].seatNo - 1;
-            if (trainIdx >= 0 && trainIdx < MAX_TRAINS && seatIdx >= 0 && seatIdx < MAX_SEATS) {
-                sys.seatMap[trainIdx][seatIdx] = 1; // 1 = booked
-            }
-        }
-    }
+    trains.insert(trains.begin() + i, t);
 }
 
 /*
   FUNCTION: addTrain
-  PURPOSE: Adds a new train, inserting it into the vector IN SORTED ORDER by trainNo.
-  TIME COMPLEXITY: O(N) due to vector shift during sorted insertion.
-  HOW TO EXPLAIN TO PROFESSOR:
-  "Sir, whenever a new train is added, we find its correct position and insert it
-   so the vector remains sorted. This guarantees Binary Search always works!"
+  PURPOSE: Prompts admin for new train details, validates, and stores in SQLite and vector.
 */
 void addTrain(RailwaySystem& sys, sqlite3* db) {
+    cout << "\n--- Add New Train Record ---\n";
     if ((int)sys.trains.size() >= MAX_TRAINS) {
-        cout << "\n[Error] Maximum capacity of " << MAX_TRAINS << " trains reached!\n";
+        cout << "[Error] System capacity reached (" << MAX_TRAINS << " trains max).\n";
         return;
     }
 
-    cout << "\n--- Add New Train Record ---\n";
     int trainNo = readInt("Enter Train Number (1000 - 99999): ", 1000, 99999);
-
-    // Check duplicate train number using Binary Search
     if (findTrainIndex(sys, trainNo) != -1) {
-        cout << "[Error] Duplicate entry! Train number " << trainNo << " already exists.\n";
+        cout << "[Error] Train #" << trainNo << " already exists in the system!\n";
         return;
     }
 
     Train t;
     t.trainNo = trainNo;
-    t.name = readName("Enter Train Name: ");
-    t.source = readName("Enter Source Station: ");
-    t.destination = readName("Enter Destination Station: ");
-
-    cout << "Enter Departure Time (e.g. 09:30 AM): ";
-    getline(cin, t.departure);
-    if (t.departure.empty()) t.departure = "12:00 PM";
-
+    t.name = readNonEmptyString("Enter Train Name: ");
+    t.source = readNonEmptyString("Enter Source Station: ");
+    t.destination = readNonEmptyString("Enter Destination Station: ");
+    t.departure = readNonEmptyString("Enter Departure Time (HH:MM): ");
     t.totalSeats = readInt("Enter Total Seats (1 - " + to_string(MAX_SEATS) + "): ", 1, MAX_SEATS);
     t.availableSeats = t.totalSeats;
-    t.fare = readFloat("Enter Ticket Fare in INR (10.0 - 10000.0): ", 10.0f, 10000.0f);
+    t.fare = (float)readInt("Enter Ticket Base Fare in Rs (50 - 10000): ", 50, 10000);
 
-    // Find sorted insertion index
-    int pos = 0;
-    while (pos < (int)sys.trains.size() && sys.trains[pos].trainNo < t.trainNo) {
-        pos++;
-    }
-
-    // Shift seatMap rows to maintain 1-to-1 index alignment
-    for (int i = (int)sys.trains.size(); i > pos; i--) {
-        for (int s = 0; s < MAX_SEATS; s++) {
-            sys.seatMap[i][s] = sys.seatMap[i - 1][s];
-        }
-    }
-    for (int s = 0; s < MAX_SEATS; s++) {
-        sys.seatMap[pos][s] = 0; // Initialize new train's seats as free
-    }
-
-    sys.trains.insert(sys.trains.begin() + pos, t);
+    std::lock_guard<std::mutex> lock(g_sysMutex);
 
     if (insertTrain(db, t)) {
-        cout << "\n[Success] Train #" << t.trainNo << " (" << t.name << ") added and saved to database successfully!\n";
+        insertTrainSorted(sys.trains, t);
+        // Initialize seat map for the newly inserted train index
+        int idx = findTrainIndex(sys, t.trainNo);
+        for (int s = 0; s < MAX_SEATS; s++) {
+            sys.seatMap[idx][s] = 0;
+        }
+        cout << "[Success] Train #" << t.trainNo << " (" << t.name << ") added successfully!\n";
+    } else {
+        cout << "[Error] Failed to insert train into database.\n";
     }
 }
 
 /*
   FUNCTION: displayTrains
-  PURPOSE: Displays all trains in a cleanly aligned tabular format using iomanip.
+  PURPOSE: Formats and prints all trains in tabular layout using setw.
   TIME COMPLEXITY: O(N)
 */
 void displayTrains(const RailwaySystem& sys) {
     if (sys.trains.empty()) {
-        cout << "\n[Notice] No trains found in the system.\n";
+        cout << "\n[Notice] No trains currently available in the system.\n";
         return;
     }
 
-    cout << "\n========================================================================================================\n";
-    cout << setw(8)  << "Train No"
+    cout << "\n====================================================================================================\n";
+    cout << setw(8)  << "Train#"
          << setw(22) << "Train Name"
          << setw(16) << "Source"
          << setw(16) << "Destination"
          << setw(12) << "Departure"
          << setw(8)  << "Total"
-         << setw(10) << "Available"
-         << setw(10) << "Fare (INR)" << "\n";
-    cout << "========================================================================================================\n";
+         << setw(8)  << "Avail"
+         << setw(10) << "Fare (Rs)" << "\n";
+    cout << "====================================================================================================\n";
 
     for (size_t i = 0; i < sys.trains.size(); i++) {
         const Train& t = sys.trains[i];
@@ -823,53 +827,48 @@ void displayTrains(const RailwaySystem& sys) {
              << setw(16) << t.destination
              << setw(12) << t.departure
              << setw(8)  << t.totalSeats
-             << setw(10) << t.availableSeats
+             << setw(8)  << t.availableSeats
              << setw(10) << fixed << setprecision(2) << t.fare << "\n";
     }
-    cout << "========================================================================================================\n";
+    cout << "====================================================================================================\n";
 }
 
 /*
   FUNCTION: searchTrainByNumber
-  PURPOSE: Uses Binary Search to look up a train by its number in O(log N).
-  TIME COMPLEXITY: O(log N)
+  PURPOSE: Fast lookup using Binary Search (O(log N)).
 */
 void searchTrainByNumber(const RailwaySystem& sys) {
     int trainNo = readInt("\nEnter Train Number to search: ", 1000, 99999);
     int idx = findTrainIndex(sys, trainNo);
 
-    if (idx == -1) {
-        cout << "[Notice] Train #" << trainNo << " was not found.\n";
-        return;
+    if (idx != -1) {
+        const Train& t = sys.trains[idx];
+        cout << "\n[Train Found via Binary Search (O(log N))]:\n";
+        cout << "  Train Number   : " << t.trainNo << "\n";
+        cout << "  Train Name     : " << t.name << "\n";
+        cout << "  Route          : " << t.source << " --> " << t.destination << "\n";
+        cout << "  Departure      : " << t.departure << "\n";
+        cout << "  Total Seats    : " << t.totalSeats << "\n";
+        cout << "  Available Seats: " << t.availableSeats << "\n";
+        cout << "  Ticket Fare    : Rs. " << fixed << setprecision(2) << t.fare << "\n";
+    } else {
+        cout << "[Notice] Train #" << trainNo << " was not found in the system.\n";
     }
-
-    const Train& t = sys.trains[idx];
-    cout << "\n--- Train Details Found (via Binary Search) ---\n";
-    cout << "Train Number    : " << t.trainNo << "\n";
-    cout << "Train Name      : " << t.name << "\n";
-    cout << "Route           : " << t.source << " -> " << t.destination << "\n";
-    cout << "Departure Time  : " << t.departure << "\n";
-    cout << "Available Seats : " << t.availableSeats << " / " << t.totalSeats << "\n";
-    cout << "Fare per ticket : Rs. " << fixed << setprecision(2) << t.fare << "\n";
 }
 
 /*
   FUNCTION: searchTrainByDestination
-  PURPOSE: Uses Linear Search to locate trains by destination with case-insensitive matching.
-  TIME COMPLEXITY: O(N * M)
-  HOW TO EXPLAIN TO PROFESSOR:
-  "Sir, multiple trains can share the same destination, and users can type partial names.
-   Linear search checks every train to find all partial matches."
+  PURPOSE: Case-insensitive substring search using Linear Search (O(N)).
 */
 void searchTrainByDestination(const RailwaySystem& sys) {
-    string dest = readName("\nEnter Destination Station to search: ");
+    string dest = readNonEmptyString("\nEnter Destination Station to search: ");
     bool found = false;
 
-    cout << "\n--- Trains matching destination: \"" << dest << "\" (via Linear Search) ---\n";
     for (size_t i = 0; i < sys.trains.size(); i++) {
         if (containsIgnoreCase(sys.trains[i].destination, dest)) {
             if (!found) {
-                cout << setw(8)  << "Train No"
+                cout << "\n[Matching Trains (Linear Search O(N))]:\n";
+                cout << setw(8)  << "Train#"
                      << setw(22) << "Train Name"
                      << setw(16) << "Source"
                      << setw(16) << "Destination"
@@ -913,11 +912,9 @@ void sortTrains(RailwaySystem& sys) {
     cout << "2. Sort by Train Name (Alphabetical A-Z)\n";
     int choice = readInt("Select sorting criteria (1 or 2): ", 1, 2);
 
-    // Make a local copy so main vector remains sorted by trainNo
     vector<Train> copyList = sys.trains;
     int n = (int)copyList.size();
 
-    // Manual Bubble Sort
     for (int i = 0; i < n - 1; i++) {
         for (int j = 0; j < n - i - 1; j++) {
             bool shouldSwap = false;
@@ -948,7 +945,6 @@ void sortTrains(RailwaySystem& sys) {
   FUNCTION: findFreeSeat
   PURPOSE: Scans the 2D seatMap row to locate the first free seat (value 0).
   TIME COMPLEXITY: O(S) where S is totalSeats.
-  HOW TO EXPLAIN: "Returns 1-based seat number, or -1 if all seats are booked."
 */
 int findFreeSeat(const RailwaySystem& sys, int trainIndex) {
     int total = sys.trains[trainIndex].totalSeats;
@@ -961,9 +957,28 @@ int findFreeSeat(const RailwaySystem& sys, int trainIndex) {
 }
 
 /*
+  FUNCTION: displayTrainSeats
+  PURPOSE: Renders the 2D seating matrix layout for a specific train index.
+*/
+void displayTrainSeats(const RailwaySystem& sys, int trainIdx) {
+    const Train& t = sys.trains[trainIdx];
+    cout << "\nCoach Layout for Train #" << t.trainNo << " (" << t.name << ") [XX = Booked]:\n\n";
+    for (int s = 0; s < t.totalSeats; s++) {
+        if (sys.seatMap[trainIdx][s] == 1) {
+            cout << "[ XX ] ";
+        } else {
+            cout << "[ " << setw(2) << (s + 1) << " ] ";
+        }
+        if ((s + 1) % 4 == 0) cout << "   ";
+        if ((s + 1) % 6 == 0) cout << "\n";
+    }
+    if (t.totalSeats % 6 != 0) cout << "\n";
+    cout << "\n";
+}
+
+/*
   FUNCTION: generatePNR
   PURPOSE: Generates the next unique PNR (max PNR + 1 starting from 1001).
-  TIME COMPLEXITY: O(P) where P is passenger count.
 */
 int generatePNR(const RailwaySystem& sys) {
     int maxPnr = 1000;
@@ -977,15 +992,17 @@ int generatePNR(const RailwaySystem& sys) {
 
 /*
   FUNCTION: bookTicket
-  PURPOSE: Books a ticket, allocating a seat via the 2D seatMap or queueing in FIFO waiting list.
-  TIME COMPLEXITY: O(P + log N)
-  HOW TO EXPLAIN TO PROFESSOR:
-  "Sir, if seats > 0, we take the first free seat from our 2D array, generate a PNR,
-   mark seatMap as 1, and save to SQLite. If seats == 0, we push the passenger into
-   that train's FIFO queue and assign them a waiting list position."
+  PURPOSE: Books a ticket, allocating a seat via manual pick or auto-assign,
+           applying age concessions, persisting via atomic SQLite transaction,
+           and generating an E-Ticket receipt file.
 */
 void bookTicket(RailwaySystem& sys, sqlite3* db) {
     cout << "\n--- Book a Ticket ---\n";
+    if (sys.trains.empty()) {
+        cout << "[Notice] No trains available for booking. Add trains first.\n";
+        return;
+    }
+
     int trainNo = readInt("Enter Train Number: ", 1000, 99999);
     int trainIdx = findTrainIndex(sys, trainNo);
 
@@ -994,9 +1011,24 @@ void bookTicket(RailwaySystem& sys, sqlite3* db) {
         return;
     }
 
-    string name = readName("Enter Passenger Name: ");
-    int age = readInt("Enter Age (1 - 120): ", 1, 120);
-    char gender = readGender("Enter Gender (M/F/O): ");
+    string name = readNonEmptyString("Enter Passenger Full Name: ");
+    int age = readInt("Enter Passenger Age: ", 1, 120);
+
+    char gender = 'O';
+    while (true) {
+        cout << "Enter Gender (M = Male, F = Female, O = Other): ";
+        string gStr;
+        getline(cin, gStr);
+        if (!gStr.empty()) {
+            char c = (char)toupper(gStr[0]);
+            if (c == 'M' || c == 'F' || c == 'O') {
+                gender = c;
+                break;
+            }
+        }
+        cout << "[Error] Invalid gender! Enter M, F, or O.\n";
+    }
+
     Date travelDate = readDate("Enter Date of Travel:");
 
     // Duplicate check: Same passenger already confirmed on this train & date
@@ -1013,15 +1045,47 @@ void bookTicket(RailwaySystem& sys, sqlite3* db) {
         }
     }
 
+    // Check availability
     int freeSeat = findFreeSeat(sys, trainIdx);
 
     // CASE 1: Seats available -> Allocate seat
     if (freeSeat != -1 && sys.trains[trainIdx].availableSeats > 0) {
-        int seatIdx = freeSeat - 1;
-        sys.seatMap[trainIdx][seatIdx] = 1; // Mark seat as booked in 2D array
-        sys.trains[trainIdx].availableSeats--;
+        int allocatedSeat = -1;
 
-        updateTrainSeats(db, trainNo, sys.trains[trainIdx].availableSeats);
+        cout << "\nSeat Allocation Preference:\n";
+        cout << "  1. Auto-Assign First Available Seat\n";
+        cout << "  2. Choose Seat Number Manually from Visual Seat Map\n";
+        int allocMode = readInt("Select mode (1 or 2): ", 1, 2);
+
+        if (allocMode == 2) {
+            displayTrainSeats(sys, trainIdx);
+            while (true) {
+                int chosen = readInt("Enter desired seat number (1 - " + to_string(sys.trains[trainIdx].totalSeats) + "): ",
+                                     1, sys.trains[trainIdx].totalSeats);
+                if (sys.seatMap[trainIdx][chosen - 1] == 0) {
+                    allocatedSeat = chosen;
+                    cout << "[Confirmed] Seat #" << allocatedSeat << " is free and allocated to you!\n";
+                    break;
+                } else {
+                    cout << "[Occupied] Seat #" << chosen << " is already booked!\n";
+                    cout << "1. Choose a different seat\n";
+                    cout << "2. Fallback to auto-assign\n";
+                    int fallback = readInt("Select (1 or 2): ", 1, 2);
+                    if (fallback == 2) {
+                        allocatedSeat = findFreeSeat(sys, trainIdx);
+                        cout << "[Auto-Assigned] Allocated Seat #" << allocatedSeat << ".\n";
+                        break;
+                    }
+                }
+            }
+        } else {
+            allocatedSeat = freeSeat;
+        }
+
+        // Calculate Age-Based Concession
+        string concessionTier;
+        float finalFare = 0.0f;
+        calculateConcession(age, sys.trains[trainIdx].fare, concessionTier, finalFare);
 
         Passenger p;
         p.pnr = generatePNR(sys);
@@ -1029,29 +1093,57 @@ void bookTicket(RailwaySystem& sys, sqlite3* db) {
         p.age = age;
         p.gender = gender;
         p.trainNo = trainNo;
-        p.seatNo = freeSeat;
+        p.seatNo = allocatedSeat;
         p.travelDate = travelDate;
         p.status = "CONFIRMED";
+        p.concession = concessionTier;
+        p.farePaid = finalFare;
 
-        sys.passengers.push_back(p);
-        insertPassenger(db, p);
+        // Atomic SQLite Transaction
+        std::lock_guard<std::mutex> lock(g_sysMutex);
+        beginTransaction(db);
 
-        cout << "\n========================================================\n";
-        cout << "               TICKET BOOKED SUCCESSFULLY!             \n";
-        cout << "========================================================\n";
-        cout << "PNR Number       : " << p.pnr << "\n";
-        cout << "Passenger Name   : " << p.name << " (Age: " << p.age << ", Gender: " << p.gender << ")\n";
-        cout << "Train            : " << sys.trains[trainIdx].name << " (#" << trainNo << ")\n";
-        cout << "Seat Number      : " << p.seatNo << "\n";
-        cout << "Travel Date      : " << p.travelDate.day << "/" << p.travelDate.month << "/" << p.travelDate.year << "\n";
-        cout << "Fare Charged     : Rs. " << fixed << setprecision(2) << sys.trains[trainIdx].fare << "\n";
-        cout << "Status           : CONFIRMED\n";
-        cout << "========================================================\n";
+        int seatIdx = allocatedSeat - 1;
+        sys.seatMap[trainIdx][seatIdx] = 1;
+        sys.trains[trainIdx].availableSeats--;
+
+        bool ok1 = updateTrainSeats(db, trainNo, sys.trains[trainIdx].availableSeats);
+        bool ok2 = insertPassenger(db, p);
+
+        if (ok1 && ok2) {
+            commitTransaction(db);
+            sys.passengers.push_back(p);
+
+            cout << "\n========================================================\n";
+            cout << "               TICKET BOOKED SUCCESSFULLY!             \n";
+            cout << "========================================================\n";
+            cout << "PNR Number       : " << p.pnr << "\n";
+            cout << "Passenger Name   : " << p.name << " (Age: " << p.age << ", Gender: " << p.gender << ")\n";
+            cout << "Train            : " << sys.trains[trainIdx].name << " (#" << trainNo << ")\n";
+            cout << "Seat Number      : " << p.seatNo << "\n";
+            cout << "Travel Date      : " << p.travelDate.day << "/" << p.travelDate.month << "/" << p.travelDate.year << "\n";
+            cout << "Concession Tier  : " << p.concession << "\n";
+            cout << "Base Train Fare  : Rs. " << fixed << setprecision(2) << sys.trains[trainIdx].fare << "\n";
+            cout << "Final Fare Paid  : Rs. " << fixed << setprecision(2) << p.farePaid << "\n";
+            cout << "Status           : CONFIRMED\n";
+            cout << "========================================================\n";
+
+            if (exportTicketToFile(p, sys.trains[trainIdx])) {
+                cout << "[E-Ticket Generated] Saved to file: ticket_" << p.pnr << ".txt\n";
+            }
+        } else {
+            rollbackTransaction(db);
+            // Revert in-memory seat allocation
+            sys.seatMap[trainIdx][seatIdx] = 0;
+            sys.trains[trainIdx].availableSeats++;
+            cout << "[Database Error] Transaction aborted! Failed to record booking.\n";
+        }
     }
     // CASE 2: Train is full -> Queue into FIFO waiting list
     else {
         cout << "\n[Notice] Train #" << trainNo << " is fully booked! (Available Seats: 0)\n";
         
+        std::lock_guard<std::mutex> lock(g_sysMutex);
         queue<WaitingEntry>& wQueue = sys.waitingLists[trainNo];
         if ((int)wQueue.size() >= MAX_WAITING) {
             cout << "[Error] Waiting list is also FULL (max " << MAX_WAITING << " passengers). Booking closed.\n";
@@ -1065,19 +1157,22 @@ void bookTicket(RailwaySystem& sys, sqlite3* db) {
         w.trainNo = trainNo;
         w.travelDate = travelDate;
 
-        insertWaiting(db, w);
-        wQueue.push(w); // FIFO Queue push
+        if (insertWaiting(db, w)) {
+            wQueue.push(w); // FIFO Queue push
 
-        cout << "========================================================\n";
-        cout << "        ADDED TO WAITING LIST (FIFO QUEUE)              \n";
-        cout << "========================================================\n";
-        cout << "Passenger Name   : " << w.name << "\n";
-        cout << "Train            : #" << trainNo << " (" << sys.trains[trainIdx].name << ")\n";
-        cout << "Waiting Position : WL-" << wQueue.size() << "\n";
-        cout << "Status           : WAITING\n";
-        cout << "Note: If any confirmed passenger cancels, you will be\n"
-             << "      automatically promoted in First-Come, First-Served order.\n";
-        cout << "========================================================\n";
+            cout << "========================================================\n";
+            cout << "        ADDED TO WAITING LIST (FIFO QUEUE)              \n";
+            cout << "========================================================\n";
+            cout << "Passenger Name   : " << w.name << "\n";
+            cout << "Train            : #" << trainNo << " (" << sys.trains[trainIdx].name << ")\n";
+            cout << "Waiting Position : WL-" << wQueue.size() << "\n";
+            cout << "Status           : WAITING\n";
+            cout << "Note: If any confirmed passenger cancels, you will be\n"
+                 << "      automatically promoted in First-Come, First-Served order.\n";
+            cout << "========================================================\n";
+        } else {
+            cout << "[Database Error] Failed to record waiting list entry.\n";
+        }
     }
 }
 
@@ -1114,6 +1209,10 @@ bool promoteFromWaitingList(RailwaySystem& sys, sqlite3* db, int trainIndex, int
 
         deleteWaiting(db, topWait.waitId);
 
+        string concessionTier;
+        float finalFare = 0.0f;
+        calculateConcession(topWait.age, sys.trains[trainIndex].fare, concessionTier, finalFare);
+
         Passenger promoted;
         promoted.pnr = generatePNR(sys);
         promoted.name = topWait.name;
@@ -1123,10 +1222,13 @@ bool promoteFromWaitingList(RailwaySystem& sys, sqlite3* db, int trainIndex, int
         promoted.seatNo = seatNo;
         promoted.travelDate = topWait.travelDate;
         promoted.status = "CONFIRMED";
+        promoted.concession = concessionTier;
+        promoted.farePaid = finalFare;
 
         sys.seatMap[trainIndex][seatNo - 1] = 1; // Mark re-booked
         sys.passengers.push_back(promoted);
         insertPassenger(db, promoted);
+        exportTicketToFile(promoted, sys.trains[trainIndex]);
 
         cout << "\n>>> [AUTO-PROMOTION EVENT: FIFO QUEUE IN ACTION] <<<\n";
         cout << "Waiting passenger " << promoted.name << " was promoted to Seat #" << seatNo
@@ -1147,7 +1249,7 @@ bool promoteFromWaitingList(RailwaySystem& sys, sqlite3* db, int trainIndex, int
   TIME COMPLEXITY: O(P + log N)
 */
 void cancelTicket(RailwaySystem& sys, sqlite3* db) {
-    cout << "\n--- Cancel Ticket ---\n";
+    cout << "\n--- Cancel Confirmed Ticket ---\n";
     int pnr = readInt("Enter PNR number to cancel: ", 1000, 999999);
     int pIdx = findPassengerByPNR(sys, pnr);
 
@@ -1173,6 +1275,9 @@ void cancelTicket(RailwaySystem& sys, sqlite3* db) {
         return;
     }
 
+    std::lock_guard<std::mutex> lock(g_sysMutex);
+    beginTransaction(db);
+
     p.status = "CANCELLED";
     updatePassengerStatus(db, pnr, "CANCELLED");
 
@@ -1183,10 +1288,65 @@ void cancelTicket(RailwaySystem& sys, sqlite3* db) {
     int freedSeat = p.seatNo;
     sys.seatMap[trainIdx][freedSeat - 1] = 0; // Free seat in 2D array
 
+    commitTransaction(db);
     cout << "\n[Success] Ticket PNR " << pnr << " has been CANCELLED successfully.\n";
 
     // Auto-promote waiting passenger if one exists
     promoteFromWaitingList(sys, db, trainIdx, freedSeat);
+}
+
+/*
+  FUNCTION: cancelWaitingListEntry
+  PURPOSE: Cancels a passenger currently queued in the FIFO waiting list.
+  ALGORITHM:
+    1. Finds the queue for the specified train.
+    2. Uses a secondary temporary queue to filter out the matching entry.
+    3. Deletes the row from SQLite waiting_list table.
+    4. Restores the remaining entries to the main queue in preserved order.
+  HOW TO EXPLAIN TO PROFESSOR:
+  "Sir, standard queue does not support random access. To cancel a waiting passenger,
+   we dequeue each element into a temporary queue, skipping the cancelled passenger,
+   and then restore the queue. This preserves the exact FIFO order of all other passengers."
+*/
+void cancelWaitingListEntry(RailwaySystem& sys, sqlite3* db) {
+    cout << "\n--- Cancel Waiting List Ticket ---\n";
+    int trainNo = readInt("Enter Train Number: ", 1000, 99999);
+    string passengerName = readNonEmptyString("Enter Passenger Name: ");
+
+    std::lock_guard<std::mutex> lock(g_sysMutex);
+    if (sys.waitingLists.find(trainNo) == sys.waitingLists.end() || sys.waitingLists[trainNo].empty()) {
+        cout << "[Notice] No passengers currently on the waiting list for Train #" << trainNo << ".\n";
+        return;
+    }
+
+    queue<WaitingEntry>& wQueue = sys.waitingLists[trainNo];
+    queue<WaitingEntry> tempQueue;
+    bool found = false;
+    WaitingEntry cancelledItem;
+
+    while (!wQueue.empty()) {
+        WaitingEntry top = wQueue.front();
+        wQueue.pop();
+
+        if (!found && toLowerCase(top.name) == toLowerCase(passengerName)) {
+            found = true;
+            cancelledItem = top; // Skip pushing to tempQueue to remove it
+        } else {
+            tempQueue.push(top);
+        }
+    }
+
+    // Restore queue
+    wQueue = tempQueue;
+
+    if (found) {
+        deleteWaiting(db, cancelledItem.waitId);
+        cout << "\n[Success] Waiting list entry for " << cancelledItem.name 
+             << " on Train #" << trainNo << " has been CANCELLED successfully.\n";
+    } else {
+        cout << "[Notice] No waiting passenger named '" << passengerName 
+             << "' found on train #" << trainNo << ".\n";
+    }
 }
 
 /*
@@ -1215,9 +1375,6 @@ void viewLastCancelledTicket(const RailwaySystem& sys) {
   FUNCTION: undoLastCancellation
   PURPOSE: Pops the top of the cancellation stack and restores the booking if seat is still free.
   TIME COMPLEXITY: O(1)
-  HOW TO EXPLAIN TO PROFESSOR:
-  "Sir, this demonstrates Stack LIFO behavior. If the freed seat has not been
-   allocated to a waiting passenger, we can pop the stack and restore the booking."
 */
 void undoLastCancellation(RailwaySystem& sys, sqlite3* db) {
     if (sys.recentCancellations.empty()) {
@@ -1225,6 +1382,7 @@ void undoLastCancellation(RailwaySystem& sys, sqlite3* db) {
         return;
     }
 
+    std::lock_guard<std::mutex> lock(g_sysMutex);
     Passenger last = sys.recentCancellations.top();
     int trainIdx = findTrainIndex(sys, last.trainNo);
     if (trainIdx == -1) {
@@ -1258,9 +1416,6 @@ void undoLastCancellation(RailwaySystem& sys, sqlite3* db) {
   FUNCTION: displayAvailableSeats
   PURPOSE: Shows seat availability counts and prints a visual 2D seating layout grid.
   TIME COMPLEXITY: O(S) where S is totalSeats.
-  HOW TO EXPLAIN TO PROFESSOR:
-  "Sir, this visualizes our 2D array seatMap. '[XX]' indicates a booked seat,
-   while '[ 1]' shows an available seat number."
 */
 void displayAvailableSeats(const RailwaySystem& sys) {
     int trainNo = readInt("\nEnter Train Number: ", 1000, 99999);
@@ -1281,21 +1436,8 @@ void displayAvailableSeats(const RailwaySystem& sys) {
     cout << " Booked Seats    : " << bookedSeats << "\n";
     cout << " Available Seats : " << t.availableSeats << "\n";
     cout << "-------------------------------------------------------\n";
-    cout << " 2D Seat Map Layout ([XX] = Booked, [ 1] = Available):\n\n";
-
-    for (int s = 0; s < t.totalSeats; s++) {
-        if (sys.seatMap[trainIdx][s] == 1) {
-            cout << "[ XX ] ";
-        } else {
-            cout << "[ " << setw(2) << (s + 1) << " ] ";
-        }
-        if ((s + 1) % 6 == 0) {
-            cout << "\n";
-        }
-    }
-    if (t.totalSeats % 6 != 0) {
-        cout << "\n";
-    }
+    
+    displayTrainSeats(sys, trainIdx);
     cout << "=======================================================\n";
 }
 
@@ -1319,175 +1461,837 @@ void displayPassengerDetails(const RailwaySystem& sys) {
     if (choice == 1) {
         int pnr = readInt("Enter PNR: ", 1000, 999999);
         int idx = findPassengerByPNR(sys, pnr);
-        if (idx == -1) {
+        if (idx != -1) {
+            const Passenger& p = sys.passengers[idx];
+            cout << "\n[Passenger Record Found]:\n";
+            cout << "  PNR Number       : " << p.pnr << "\n";
+            cout << "  Name             : " << p.name << "\n";
+            cout << "  Age / Gender     : " << p.age << " / " << p.gender << "\n";
+            cout << "  Train Number     : " << p.trainNo << "\n";
+            cout << "  Seat Number      : " << p.seatNo << "\n";
+            cout << "  Travel Date      : " << p.travelDate.day << "/" << p.travelDate.month << "/" << p.travelDate.year << "\n";
+            cout << "  Booking Status   : " << p.status << "\n";
+            cout << "  Concession Tier  : " << p.concession << "\n";
+            cout << "  Fare Paid        : Rs. " << fixed << setprecision(2) << p.farePaid << "\n";
+
+            int tIdx = findTrainIndex(sys, p.trainNo);
+            if (tIdx != -1) {
+                cout << "  Would you like to export/print E-Ticket receipt file? (Y/N): ";
+                string exportChoice;
+                getline(cin, exportChoice);
+                if (!exportChoice.empty() && (exportChoice[0] == 'y' || exportChoice[0] == 'Y')) {
+                    if (exportTicketToFile(p, sys.trains[tIdx])) {
+                        cout << "[Success] E-Ticket exported to file: ticket_" << p.pnr << ".txt\n";
+                    }
+                }
+            }
+        } else {
             cout << "[Notice] No passenger found with PNR " << pnr << ".\n";
-            return;
         }
-        const Passenger& p = sys.passengers[idx];
-        cout << "\n-------------------------------------------------\n";
-        cout << "PNR Number     : " << p.pnr << "\n";
-        cout << "Name           : " << p.name << "\n";
-        cout << "Age / Gender   : " << p.age << " / " << p.gender << "\n";
-        cout << "Train Number   : " << p.trainNo << "\n";
-        cout << "Seat Number    : " << p.seatNo << "\n";
-        cout << "Travel Date    : " << p.travelDate.day << "/" << p.travelDate.month << "/" << p.travelDate.year << "\n";
-        cout << "Status         : " << p.status << "\n";
-        cout << "-------------------------------------------------\n";
     } else if (choice == 2) {
         int trainNo = readInt("Enter Train Number: ", 1000, 99999);
         bool found = false;
-        cout << "\n=================================================================================\n";
+        cout << "\n====================================================================================================\n";
         cout << setw(8)  << "PNR"
              << setw(20) << "Name"
              << setw(6)  << "Age"
-             << setw(8)  << "Gender"
-             << setw(10) << "Seat No"
+             << setw(6)  << "Gen"
+             << setw(6)  << "Seat"
              << setw(14) << "Date"
-             << setw(12) << "Status" << "\n";
-        cout << "=================================================================================\n";
-
+             << setw(12) << "Status"
+             << setw(16) << "Fare Paid" << "\n";
+        cout << "====================================================================================================\n";
         for (size_t i = 0; i < sys.passengers.size(); i++) {
             const Passenger& p = sys.passengers[i];
             if (p.trainNo == trainNo) {
                 found = true;
-                string dStr = to_string(p.travelDate.day) + "/" + to_string(p.travelDate.month) + "/" + to_string(p.travelDate.year);
+                string dateStr = to_string(p.travelDate.day) + "/" + to_string(p.travelDate.month) + "/" + to_string(p.travelDate.year);
                 cout << setw(8)  << p.pnr
                      << setw(20) << p.name
                      << setw(6)  << p.age
-                     << setw(8)  << p.gender
-                     << setw(10) << p.seatNo
-                     << setw(14) << dStr
-                     << setw(12) << p.status << "\n";
+                     << setw(6)  << p.gender
+                     << setw(6)  << p.seatNo
+                     << setw(14) << dateStr
+                     << setw(12) << p.status
+                     << setw(16) << fixed << setprecision(2) << p.farePaid << "\n";
             }
         }
-        if (!found) {
-            cout << "No passengers found for train #" << trainNo << ".\n";
-        }
-        cout << "=================================================================================\n";
+        if (!found) cout << "[Notice] No passenger bookings found on Train #" << trainNo << ".\n";
+        cout << "====================================================================================================\n";
     } else {
-        cout << "\n============================================================================================\n";
+        cout << "\n====================================================================================================\n";
         cout << setw(8)  << "PNR"
              << setw(20) << "Name"
              << setw(6)  << "Age"
-             << setw(8)  << "Gender"
-             << setw(10) << "Train No"
-             << setw(10) << "Seat No"
-             << setw(14) << "Date"
-             << setw(12) << "Status" << "\n";
-        cout << "============================================================================================\n";
-
+             << setw(6)  << "Gen"
+             << setw(8)  << "Train#"
+             << setw(6)  << "Seat"
+             << setw(12) << "Status"
+             << setw(16) << "Fare Paid" << "\n";
+        cout << "====================================================================================================\n";
         for (size_t i = 0; i < sys.passengers.size(); i++) {
             const Passenger& p = sys.passengers[i];
-            string dStr = to_string(p.travelDate.day) + "/" + to_string(p.travelDate.month) + "/" + to_string(p.travelDate.year);
             cout << setw(8)  << p.pnr
                  << setw(20) << p.name
                  << setw(6)  << p.age
-                 << setw(8)  << p.gender
-                 << setw(10) << p.trainNo
-                 << setw(10) << p.seatNo
-                 << setw(14) << dStr
-                 << setw(12) << p.status << "\n";
+                 << setw(6)  << p.gender
+                 << setw(8)  << p.trainNo
+                 << setw(6)  << p.seatNo
+                 << setw(12) << p.status
+                 << setw(16) << fixed << setprecision(2) << p.farePaid << "\n";
         }
-        cout << "============================================================================================\n";
+        cout << "====================================================================================================\n";
     }
 }
 
 /*
   FUNCTION: displayWaitingList
-  PURPOSE: Displays waiting queues for all trains non-destructively.
-  TIME COMPLEXITY: O(T * W)
-  HOW TO EXPLAIN TO PROFESSOR:
-  "Sir, since standard queue does not support random access or index traversal,
-   we create a local copy of the queue and call pop() on the copy.
-   The real queue in memory remains completely untouched!"
+  PURPOSE: Displays all active waiting queues in First-Come, First-Served order.
+  TIME COMPLEXITY: O(W) where W is total waiting passengers.
 */
 void displayWaitingList(const RailwaySystem& sys) {
-    if (sys.waitingLists.empty()) {
-        cout << "\n[Notice] No active waiting lists.\n";
-        return;
-    }
+    bool hasWaiting = false;
+    cout << "\n--- Current Waiting Lists (FIFO Queues) ---\n";
 
-    bool hasAnyWaiting = false;
-    map<int, queue<WaitingEntry> >::const_iterator it;
-
-    for (it = sys.waitingLists.begin(); it != sys.waitingLists.end(); ++it) {
+    for (map<int, queue<WaitingEntry> >::const_iterator it = sys.waitingLists.begin(); 
+         it != sys.waitingLists.end(); ++it) {
+        
         int trainNo = it->first;
-        // Non-destructive copy of the train's queue
         queue<WaitingEntry> copyQueue = it->second;
 
         if (!copyQueue.empty()) {
-            hasAnyWaiting = true;
-            cout << "\n========================================================================\n";
-            cout << " WAITING LIST FOR TRAIN #" << trainNo << " (Queue Size: " << copyQueue.size() << ")\n";
-            cout << "========================================================================\n";
-            cout << setw(6)  << "Pos"
-                 << setw(20) << "Name"
+            hasWaiting = true;
+            int tIdx = findTrainIndex(sys, trainNo);
+            string trainName = (tIdx != -1) ? sys.trains[tIdx].name : "Unknown Train";
+
+            cout << "\nTrain #" << trainNo << " (" << trainName << ") - Waiting Queue (" 
+                 << copyQueue.size() << " passengers):\n";
+            cout << "----------------------------------------------------------------------\n";
+            cout << setw(8)  << "Pos"
+                 << setw(22) << "Passenger Name"
                  << setw(6)  << "Age"
-                 << setw(8)  << "Gender"
-                 << setw(16) << "Date" << "\n";
-            cout << "------------------------------------------------------------------------\n";
+                 << setw(6)  << "Gen"
+                 << setw(14) << "Travel Date" << "\n";
+            cout << "----------------------------------------------------------------------\n";
 
             int pos = 1;
             while (!copyQueue.empty()) {
                 WaitingEntry w = copyQueue.front();
-                copyQueue.pop(); // Pop from local copy only
-
-                string dStr = to_string(w.travelDate.day) + "/" + to_string(w.travelDate.month) + "/" + to_string(w.travelDate.year);
-                cout << setw(6)  << ("WL-" + to_string(pos))
-                     << setw(20) << w.name
+                copyQueue.pop(); // Dequeue next item from copy
+                string dateStr = to_string(w.travelDate.day) + "/" + to_string(w.travelDate.month) + "/" + to_string(w.travelDate.year);
+                cout << setw(8)  << ("WL-" + to_string(pos++))
+                     << setw(22) << w.name
                      << setw(6)  << w.age
-                     << setw(8)  << w.gender
-                     << setw(16) << dStr << "\n";
-                pos++;
+                     << setw(6)  << w.gender
+                     << setw(14) << dateStr << "\n";
             }
-            cout << "========================================================================\n";
         }
     }
 
-    if (!hasAnyWaiting) {
-        cout << "\n[Notice] All waiting lists are currently empty.\n";
+    if (!hasWaiting) {
+        cout << "[Notice] All waiting lists are currently empty across the entire network!\n";
+    }
+}
+
+/*
+  FUNCTION: calculateStats
+  PURPOSE: Aggregates system metrics (Trains, Bookings, Revenue, Waitlists).
+*/
+SystemStats calculateStats(const RailwaySystem& sys) {
+    SystemStats s;
+    s.totalTrains = (int)sys.trains.size();
+    s.totalBookings = (int)sys.passengers.size();
+    s.confirmedBookings = 0;
+    s.cancelledBookings = 0;
+    s.totalRevenue = 0.0f;
+
+    for (size_t i = 0; i < sys.passengers.size(); i++) {
+        if (sys.passengers[i].status == "CONFIRMED") {
+            s.confirmedBookings++;
+            s.totalRevenue += sys.passengers[i].farePaid;
+        } else if (sys.passengers[i].status == "CANCELLED") {
+            s.cancelledBookings++;
+        }
+    }
+
+    s.totalWaitlisted = 0;
+    for (map<int, queue<WaitingEntry> >::const_iterator it = sys.waitingLists.begin(); 
+         it != sys.waitingLists.end(); ++it) {
+        s.totalWaitlisted += (int)it->second.size();
+    }
+    return s;
+}
+
+/*
+  FUNCTION: displaySystemStats
+  PURPOSE: Executive report for Administrator Portal.
+*/
+void displaySystemStats(const RailwaySystem& sys) {
+    SystemStats s = calculateStats(sys);
+    cout << "\n=======================================================\n";
+    cout << "          SYSTEM REVENUE & BOOKING ANALYTICS           \n";
+    cout << "=======================================================\n";
+    cout << "  Operational Trains       : " << s.totalTrains << "\n";
+    cout << "  Total Handled Bookings   : " << s.totalBookings << "\n";
+    cout << "  Confirmed Tickets        : " << s.confirmedBookings << "\n";
+    cout << "  Cancelled Tickets        : " << s.cancelledBookings << "\n";
+    cout << "  Passengers on Waitlist   : " << s.totalWaitlisted << "\n";
+    cout << "  Net Realized Revenue     : Rs. " << fixed << setprecision(2) << s.totalRevenue << "\n";
+    cout << "=======================================================\n";
+}
+
+/*
+  FUNCTION: loadSystem
+  PURPOSE: Reads active database state into working memory.
+*/
+void loadSystem(RailwaySystem& sys, sqlite3* db) {
+    for (int t = 0; t < MAX_TRAINS; t++) {
+        for (int s = 0; s < MAX_SEATS; s++) {
+            sys.seatMap[t][s] = 0;
+        }
+    }
+
+    loadTrains(db, sys.trains);
+    loadPassengers(db, sys.passengers);
+    loadWaitingList(db, sys.waitingLists);
+
+    // Rebuild 2D seatMap from confirmed passengers
+    for (size_t i = 0; i < sys.passengers.size(); i++) {
+        const Passenger& p = sys.passengers[i];
+        if (p.status == "CONFIRMED") {
+            int trainIdx = findTrainIndex(sys, p.trainNo);
+            if (trainIdx != -1 && p.seatNo >= 1 && p.seatNo <= MAX_SEATS) {
+                sys.seatMap[trainIdx][p.seatNo - 1] = 1;
+            }
+        }
     }
 }
 
 
 // ========================================================================================================
-// SECTION 5: MAIN MENU & SYSTEM ENTRY POINT (MODULE II)
+// SECTION 5: EMBEDDED WINSOCK HTTP SERVER & REST API (FULL-STACK INTEGRATION)
 // ========================================================================================================
 
 /*
-  FUNCTION: displayMenu
-  PURPOSE: Prints the interactive terminal menu options clearly.
+  INSTRUCTION / EXPLANATION:
+  - Embeds a lightweight HTTP/1.1 server inside C++ using standard Windows Sockets (winsock2.h).
+  - Listens on Port 8080 and serves the Single-Page Application (HTML/CSS/JS).
+  - Handles REST endpoints: /api/trains, /api/seats, /api/pnr, /api/stats, /api/manifest, /api/ticket, /api/book, /api/cancel.
+  - Allows simultaneous terminal and browser interaction via std::mutex thread synchronization.
 */
-void displayMenu() {
+
+// Helper to extract query parameters: /path?key=value
+string getQueryParam(const string& url, const string& param) {
+    size_t qPos = url.find('?');
+    if (qPos == string::npos) return "";
+    string query = url.substr(qPos + 1);
+    size_t pPos = query.find(param + "=");
+    if (pPos == string::npos) return "";
+    size_t valStart = pPos + param.length() + 1;
+    size_t valEnd = query.find('&', valStart);
+    if (valEnd == string::npos) valEnd = query.length();
+    return query.substr(valStart, valEnd - valStart);
+}
+
+// Simple JSON field extractor for basic types without external dependencies
+string extractJsonField(const string& json, const string& key) {
+    string target = "\"" + key + "\":";
+    size_t pos = json.find(target);
+    if (pos == string::npos) return "";
+    pos += target.length();
+    while (pos < json.length() && (json[pos] == ' ' || json[pos] == '\t')) pos++;
+    if (pos >= json.length()) return "";
+
+    if (json[pos] == '\"') {
+        pos++;
+        size_t endPos = json.find('\"', pos);
+        if (endPos == string::npos) return "";
+        return json.substr(pos, endPos - pos);
+    } else {
+        size_t endPos = pos;
+        while (endPos < json.length() && json[endPos] != ',' && json[endPos] != '}' && json[endPos] != '\r' && json[endPos] != '\n' && json[endPos] != ' ') {
+            endPos++;
+        }
+        return json.substr(pos, endPos - pos);
+    }
+}
+
+// In-memory HTML fallback in case web/index.html is not present on disk
+const char* FALLBACK_HTML = 
+    "<!DOCTYPE html><html><head><title>Railway Reservation</title></head>"
+    "<body style='font-family:sans-serif;background:#0f172a;color:#fff;padding:2rem;text-align:center;'>"
+    "<h2>Indian Railways Reservation System</h2>"
+    "<p>Embedded C++ Winsock Backend is running online on port 8080.</p>"
+    "<p>Please ensure <code>web/index.html</code> is present in the working directory for the full dashboard.</p>"
+    "</body></html>";
+
+// Handles incoming client HTTP request
+void handleHttpClient(SOCKET clientSocket, RailwaySystem& sys, sqlite3* db) {
+    char buffer[8192];
+    int bytesReceived = recv(clientSocket, buffer, sizeof(buffer) - 1, 0);
+    if (bytesReceived <= 0) return;
+    
+    string request(buffer, bytesReceived);
+    size_t headerEnd = request.find("\r\n\r\n");
+    while (headerEnd == string::npos) {
+        int more = recv(clientSocket, buffer, sizeof(buffer) - 1, 0);
+        if (more <= 0) break;
+        request.append(buffer, more);
+        headerEnd = request.find("\r\n\r\n");
+    }
+
+    // Read full body if Content-Length specified
+    size_t clPos = request.find("Content-Length:");
+    if (clPos == string::npos) clPos = request.find("content-length:");
+    if (clPos != string::npos && headerEnd != string::npos) {
+        size_t valStart = clPos + 15;
+        while (valStart < request.length() && (request[valStart] == ' ' || request[valStart] == '\t')) valStart++;
+        size_t valEnd = request.find("\r\n", valStart);
+        if (valEnd != string::npos) {
+            int contentLength = atoi(request.substr(valStart, valEnd - valStart).c_str());
+            size_t currentBodyLen = request.length() - (headerEnd + 4);
+            while ((int)currentBodyLen < contentLength) {
+                int more = recv(clientSocket, buffer, sizeof(buffer) - 1, 0);
+                if (more <= 0) break;
+                request.append(buffer, more);
+                currentBodyLen += more;
+            }
+        }
+    }
+
+    istringstream reqStream(request);
+    string method, path, protocol;
+    reqStream >> method >> path >> protocol;
+
+    string responseHeaders = "";
+    string responseBody = "";
+
+    // 1. SERVE FRONTEND (Single Page Application)
+    if (path == "/" || path == "/index.html") {
+        ifstream htmlFile("web/index.html");
+        if (htmlFile.is_open()) {
+            stringstream ss;
+            ss << htmlFile.rdbuf();
+            responseBody = ss.str();
+            htmlFile.close();
+        } else {
+            responseBody = FALLBACK_HTML;
+        }
+        responseHeaders = "HTTP/1.1 200 OK\r\n"
+                          "Content-Type: text/html; charset=utf-8\r\n"
+                          "Content-Length: " + to_string(responseBody.length()) + "\r\n"
+                          "Access-Control-Allow-Origin: *\r\n"
+                          "Connection: close\r\n\r\n";
+    }
+    // 2. REST API: GET ALL TRAINS
+    else if (path == "/api/trains") {
+        std::lock_guard<std::mutex> lock(g_sysMutex);
+        stringstream json;
+        json << "[";
+        for (size_t i = 0; i < sys.trains.size(); i++) {
+            const Train& t = sys.trains[i];
+            json << "{\"trainNo\":" << t.trainNo
+                 << ",\"name\":\"" << t.name << "\""
+                 << ",\"source\":\"" << t.source << "\""
+                 << ",\"destination\":\"" << t.destination << "\""
+                 << ",\"departure\":\"" << t.departure << "\""
+                 << ",\"totalSeats\":" << t.totalSeats
+                 << ",\"availableSeats\":" << t.availableSeats
+                 << ",\"fare\":" << fixed << setprecision(2) << t.fare
+                 << "}";
+            if (i + 1 < sys.trains.size()) json << ",";
+        }
+        json << "]";
+        responseBody = json.str();
+        responseHeaders = "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nAccess-Control-Allow-Origin: *\r\nContent-Length: " 
+                          + to_string(responseBody.length()) + "\r\nConnection: close\r\n\r\n";
+    }
+    // 3. REST API: GET SEAT MAP FOR TRAIN
+    else if (path.find("/api/seats") == 0) {
+        string tNoStr = getQueryParam(path, "trainNo");
+        int tNo = atoi(tNoStr.c_str());
+
+        std::lock_guard<std::mutex> lock(g_sysMutex);
+        int tIdx = findTrainIndex(sys, tNo);
+        if (tIdx != -1) {
+            stringstream json;
+            json << "{\"trainNo\":" << tNo
+                 << ",\"totalSeats\":" << sys.trains[tIdx].totalSeats
+                 << ",\"availableSeats\":" << sys.trains[tIdx].availableSeats
+                 << ",\"seats\":[";
+            for (int s = 0; s < sys.trains[tIdx].totalSeats; s++) {
+                json << sys.seatMap[tIdx][s];
+                if (s + 1 < sys.trains[tIdx].totalSeats) json << ",";
+            }
+            json << "]}";
+            responseBody = json.str();
+        } else {
+            responseBody = "{\"error\":\"Train not found\"}";
+        }
+        responseHeaders = "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nAccess-Control-Allow-Origin: *\r\nContent-Length: " 
+                          + to_string(responseBody.length()) + "\r\nConnection: close\r\n\r\n";
+    }
+    // 4. REST API: GET PNR STATUS
+    else if (path.find("/api/pnr") == 0) {
+        string pnrStr = getQueryParam(path, "pnr");
+        int pnr = atoi(pnrStr.c_str());
+
+        std::lock_guard<std::mutex> lock(g_sysMutex);
+        int pIdx = findPassengerByPNR(sys, pnr);
+        if (pIdx != -1) {
+            const Passenger& p = sys.passengers[pIdx];
+            stringstream json;
+            json << "{\"found\":true,\"pnr\":" << p.pnr
+                 << ",\"name\":\"" << p.name << "\""
+                 << ",\"age\":" << p.age
+                 << ",\"gender\":\"" << p.gender << "\""
+                 << ",\"trainNo\":" << p.trainNo
+                 << ",\"seatNo\":" << p.seatNo
+                 << ",\"date\":\"" << p.travelDate.day << "/" << p.travelDate.month << "/" << p.travelDate.year << "\""
+                 << ",\"status\":\"" << p.status << "\""
+                 << ",\"concession\":\"" << p.concession << "\""
+                 << ",\"farePaid\":" << fixed << setprecision(2) << p.farePaid
+                 << "}";
+            responseBody = json.str();
+        } else {
+            responseBody = "{\"found\":false}";
+        }
+        responseHeaders = "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nAccess-Control-Allow-Origin: *\r\nContent-Length: " 
+                          + to_string(responseBody.length()) + "\r\nConnection: close\r\n\r\n";
+    }
+    // 5. REST API: GET EXECUTIVE SYSTEM STATS
+    else if (path == "/api/stats") {
+        std::lock_guard<std::mutex> lock(g_sysMutex);
+        SystemStats s = calculateStats(sys);
+        stringstream json;
+        json << "{\"totalTrains\":" << s.totalTrains
+             << ",\"totalBookings\":" << s.totalBookings
+             << ",\"confirmedBookings\":" << s.confirmedBookings
+             << ",\"cancelledBookings\":" << s.cancelledBookings
+             << ",\"totalWaitlisted\":" << s.totalWaitlisted
+             << ",\"totalRevenue\":" << fixed << setprecision(2) << s.totalRevenue
+             << "}";
+        responseBody = json.str();
+        responseHeaders = "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nAccess-Control-Allow-Origin: *\r\nContent-Length: " 
+                          + to_string(responseBody.length()) + "\r\nConnection: close\r\n\r\n";
+    }
+    // 6. REST API: GET PASSENGER MANIFEST
+    else if (path == "/api/manifest") {
+        std::lock_guard<std::mutex> lock(g_sysMutex);
+        stringstream json;
+        json << "[";
+        for (size_t i = 0; i < sys.passengers.size(); i++) {
+            const Passenger& p = sys.passengers[i];
+            json << "{\"pnr\":" << p.pnr
+                 << ",\"name\":\"" << p.name << "\""
+                 << ",\"age\":" << p.age
+                 << ",\"gender\":\"" << p.gender << "\""
+                 << ",\"trainNo\":" << p.trainNo
+                 << ",\"seatNo\":" << p.seatNo
+                 << ",\"date\":\"" << p.travelDate.day << "/" << p.travelDate.month << "/" << p.travelDate.year << "\""
+                 << ",\"status\":\"" << p.status << "\""
+                 << ",\"concession\":\"" << p.concession << "\""
+                 << ",\"farePaid\":" << fixed << setprecision(2) << p.farePaid
+                 << "}";
+            if (i + 1 < sys.passengers.size()) json << ",";
+        }
+        json << "]";
+        responseBody = json.str();
+        responseHeaders = "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nAccess-Control-Allow-Origin: *\r\nContent-Length: " 
+                          + to_string(responseBody.length()) + "\r\nConnection: close\r\n\r\n";
+    }
+    // 7. REST API: DOWNLOAD E-TICKET PLAIN TEXT
+    else if (path.find("/api/ticket") == 0) {
+        string pnrStr = getQueryParam(path, "pnr");
+        int pnr = atoi(pnrStr.c_str());
+        string fileName = "ticket_" + to_string(pnr) + ".txt";
+
+        ifstream tFile(fileName.c_str());
+        if (tFile.is_open()) {
+            stringstream ss;
+            ss << tFile.rdbuf();
+            responseBody = ss.str();
+            tFile.close();
+        } else {
+            responseBody = "Ticket receipt file not found on disk.";
+        }
+        responseHeaders = "HTTP/1.1 200 OK\r\nContent-Type: text/plain; charset=utf-8\r\nAccess-Control-Allow-Origin: *\r\nContent-Length: " 
+                          + to_string(responseBody.length()) + "\r\nConnection: close\r\n\r\n";
+    }
+    // 8. REST API: POST BOOK TICKET
+    else if (method == "POST" && path == "/api/book") {
+        size_t bodyPos = request.find("\r\n\r\n");
+        string body = (bodyPos != string::npos) ? request.substr(bodyPos + 4) : "";
+
+        int trainNo = atoi(extractJsonField(body, "trainNo").c_str());
+        string name = extractJsonField(body, "name");
+        int age = atoi(extractJsonField(body, "age").c_str());
+        string gStr = extractJsonField(body, "gender");
+        char gender = (!gStr.empty()) ? gStr[0] : 'M';
+        string dateStr = extractJsonField(body, "dateStr");
+        int seatNo = atoi(extractJsonField(body, "seatNo").c_str());
+
+        // Parse YYYY-MM-DD
+        Date travelDate;
+        travelDate.year = 2026; travelDate.month = 10; travelDate.day = 15;
+        if (dateStr.length() >= 10) {
+            travelDate.year = atoi(dateStr.substr(0, 4).c_str());
+            travelDate.month = atoi(dateStr.substr(5, 2).c_str());
+            travelDate.day = atoi(dateStr.substr(8, 2).c_str());
+        }
+
+        std::lock_guard<std::mutex> lock(g_sysMutex);
+        int trainIdx = findTrainIndex(sys, trainNo);
+        if (trainIdx == -1) {
+            responseBody = "{\"success\":false,\"error\":\"Train does not exist\"}";
+        } else {
+            // Check availability
+            int freeSeat = findFreeSeat(sys, trainIdx);
+            if (freeSeat != -1 && sys.trains[trainIdx].availableSeats > 0) {
+                int allocated = (seatNo >= 1 && seatNo <= sys.trains[trainIdx].totalSeats && sys.seatMap[trainIdx][seatNo - 1] == 0)
+                                ? seatNo : freeSeat;
+
+                string concessionTier;
+                float finalFare = 0.0f;
+                calculateConcession(age, sys.trains[trainIdx].fare, concessionTier, finalFare);
+
+                Passenger p;
+                p.pnr = generatePNR(sys);
+                p.name = name;
+                p.age = age;
+                p.gender = gender;
+                p.trainNo = trainNo;
+                p.seatNo = allocated;
+                p.travelDate = travelDate;
+                p.status = "CONFIRMED";
+                p.concession = concessionTier;
+                p.farePaid = finalFare;
+
+                beginTransaction(db);
+                sys.seatMap[trainIdx][allocated - 1] = 1;
+                sys.trains[trainIdx].availableSeats--;
+                updateTrainSeats(db, trainNo, sys.trains[trainIdx].availableSeats);
+                insertPassenger(db, p);
+                commitTransaction(db);
+
+                sys.passengers.push_back(p);
+                exportTicketToFile(p, sys.trains[trainIdx]);
+
+                stringstream json;
+                json << "{\"success\":true,\"status\":\"CONFIRMED\",\"pnr\":" << p.pnr
+                     << ",\"name\":\"" << p.name << "\""
+                     << ",\"age\":" << p.age
+                     << ",\"seatNo\":" << p.seatNo
+                     << ",\"concession\":\"" << p.concession << "\""
+                     << ",\"farePaid\":" << fixed << setprecision(2) << p.farePaid
+                     << "}";
+                responseBody = json.str();
+            } else {
+                queue<WaitingEntry>& wQueue = sys.waitingLists[trainNo];
+                if ((int)wQueue.size() >= MAX_WAITING) {
+                    responseBody = "{\"success\":false,\"error\":\"Train and Waiting List are both FULL.\"}";
+                } else {
+                    WaitingEntry w;
+                    w.name = name;
+                    w.age = age;
+                    w.gender = gender;
+                    w.trainNo = trainNo;
+                    w.travelDate = travelDate;
+
+                    insertWaiting(db, w);
+                    wQueue.push(w);
+
+                    stringstream json;
+                    json << "{\"success\":true,\"status\":\"WAITING\",\"waitPos\":" << wQueue.size()
+                         << ",\"name\":\"" << w.name << "\"}";
+                    responseBody = json.str();
+                }
+            }
+        }
+        responseHeaders = "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nAccess-Control-Allow-Origin: *\r\nContent-Length: " 
+                          + to_string(responseBody.length()) + "\r\nConnection: close\r\n\r\n";
+    }
+    // 9. REST API: POST CANCEL TICKET
+    else if (method == "POST" && path == "/api/cancel") {
+        size_t bodyPos = request.find("\r\n\r\n");
+        string body = (bodyPos != string::npos) ? request.substr(bodyPos + 4) : "";
+        int pnr = atoi(extractJsonField(body, "pnr").c_str());
+
+        std::lock_guard<std::mutex> lock(g_sysMutex);
+        int pIdx = findPassengerByPNR(sys, pnr);
+
+        if (pIdx == -1) {
+            responseBody = "{\"success\":false,\"error\":\"Ticket PNR not found\"}";
+        } else if (sys.passengers[pIdx].status == "CANCELLED") {
+            responseBody = "{\"success\":false,\"error\":\"Ticket already cancelled\"}";
+        } else {
+            Passenger& p = sys.passengers[pIdx];
+            beginTransaction(db);
+            p.status = "CANCELLED";
+            updatePassengerStatus(db, pnr, "CANCELLED");
+            sys.recentCancellations.push(p);
+
+            int trainIdx = findTrainIndex(sys, p.trainNo);
+            int freedSeat = p.seatNo;
+            sys.seatMap[trainIdx][freedSeat - 1] = 0;
+            commitTransaction(db);
+
+            bool promoted = promoteFromWaitingList(sys, db, trainIdx, freedSeat);
+            string msg = promoted ? "Freed seat was automatically allocated to the waiting list passenger!"
+                                  : "Seat is now free for booking.";
+            responseBody = "{\"success\":true,\"message\":\"" + msg + "\"}";
+        }
+        responseHeaders = "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nAccess-Control-Allow-Origin: *\r\nContent-Length: " 
+                          + to_string(responseBody.length()) + "\r\nConnection: close\r\n\r\n";
+    }
+    // 404 NOT FOUND
+    else {
+        responseBody = "{\"error\":\"Not Found\"}";
+        responseHeaders = "HTTP/1.1 404 Not Found\r\nContent-Type: application/json\r\nAccess-Control-Allow-Origin: *\r\nContent-Length: " 
+                          + to_string(responseBody.length()) + "\r\nConnection: close\r\n\r\n";
+    }
+
+    send(clientSocket, responseHeaders.c_str(), (int)responseHeaders.length(), 0);
+    send(clientSocket, responseBody.c_str(), (int)responseBody.length(), 0);
+}
+
+// Background thread loop listening on port 8080
+void runHttpServer(RailwaySystem* sysPtr, sqlite3* dbPtr, int port) {
+#ifdef _WIN32
+    WSADATA wsa;
+    if (WSAStartup(MAKEWORD(2, 2), &wsa) != 0) return;
+#endif
+
+    SOCKET serverSocket = socket(AF_INET, SOCK_STREAM, 0);
+    if (serverSocket == INVALID_SOCKET) {
+#ifdef _WIN32
+        WSACleanup();
+#endif
+        return;
+    }
+
+    int opt = 1;
+    setsockopt(serverSocket, SOL_SOCKET, SO_REUSEADDR, (char*)&opt, sizeof(opt));
+
+    sockaddr_in serverAddr;
+    serverAddr.sin_family = AF_INET;
+    serverAddr.sin_addr.s_addr = INADDR_ANY;
+    serverAddr.sin_port = htons(port);
+
+    if (bind(serverSocket, (sockaddr*)&serverAddr, sizeof(serverAddr)) == SOCKET_ERROR) {
+        CLOSE_SOCKET(serverSocket);
+#ifdef _WIN32
+        WSACleanup();
+#endif
+        return;
+    }
+
+    if (listen(serverSocket, 10) == SOCKET_ERROR) {
+        CLOSE_SOCKET(serverSocket);
+#ifdef _WIN32
+        WSACleanup();
+#endif
+        return;
+    }
+
+    while (true) {
+        sockaddr_in clientAddr;
+        socklen_t clientLen = sizeof(clientAddr);
+        SOCKET clientSocket = accept(serverSocket, (sockaddr*)&clientAddr, &clientLen);
+        if (clientSocket == INVALID_SOCKET) break;
+
+        handleHttpClient(clientSocket, *sysPtr, dbPtr);
+        CLOSE_SOCKET(clientSocket);
+    }
+
+    CLOSE_SOCKET(serverSocket);
+#ifdef _WIN32
+    WSACleanup();
+#endif
+}
+
+
+// ========================================================================================================
+// SECTION 6: PORTAL MENUS & MAIN ENTRY POINT (MODULE II)
+// ========================================================================================================
+
+/*
+  FUNCTION: displayPortalSelectionMenu
+  PURPOSE: Top-level entry selector between Passenger Kiosk, Admin Portal, and Web Dashboard.
+*/
+void displayPortalSelectionMenu() {
     cout << "\n=======================================================\n";
     cout << "     RAILWAY TICKET RESERVATION SYSTEM (GROUP 4)       \n";
     cout << "=======================================================\n";
-    cout << "  1. Add New Train Record\n";
-    cout << "  2. Display All Trains\n";
-    cout << "  3. Search Train (By Train No or Destination)\n";
-    cout << "  4. Book a Ticket (Allocates Seat or Queues Waitlist)\n";
-    cout << "  5. Cancel a Ticket (Frees Seat & Auto-promotes Queue)\n";
-    cout << "  6. Display Available Seats & 2D Seat Map\n";
-    cout << "  7. Display Passenger Details (By PNR / By Train / All)\n";
-    cout << "  8. Display Waiting List Queues\n";
-    cout << "  9. Sort Trains for Display (By Fare or Name)\n";
-    cout << " 10. Recent Cancellations (Stack - LIFO) & Undo\n";
+    cout << "  1. Passenger Portal (Book, Cancel, Status, E-Ticket)\n";
+    cout << "  2. Administrator Portal (PIN Protected: Manifest, Stats)\n";
+    cout << "  3. Launch Modern Web Dashboard (http://localhost:8080)\n";
     cout << "  0. Exit Application\n";
     cout << "=======================================================\n";
 }
 
 /*
+  FUNCTION: displayPassengerMenu
+  PURPOSE: Dedicated passenger portal options.
+*/
+void displayPassengerMenu() {
+    cout << "\n-------------------------------------------------------\n";
+    cout << "                   PASSENGER PORTAL                    \n";
+    cout << "-------------------------------------------------------\n";
+    cout << "  1. View Train Schedules & Fares\n";
+    cout << "  2. Search Train (By Number or Destination)\n";
+    cout << "  3. Check Available Seats & 2D Coach Map\n";
+    cout << "  4. Book a Ticket (Manual Seat & Age Concession)\n";
+    cout << "  5. Cancel Confirmed Ticket (by PNR)\n";
+    cout << "  6. Cancel Waiting List Entry\n";
+    cout << "  7. View PNR Status & Print E-Ticket Slip\n";
+    cout << "  8. Sort Trains for Display (Bubble Sort)\n";
+    cout << "  0. Return to Main Portal Menu\n";
+    cout << "-------------------------------------------------------\n";
+}
+
+/*
+  FUNCTION: displayAdminMenu
+  PURPOSE: Dedicated administrator management options.
+*/
+void displayAdminMenu() {
+    cout << "\n-------------------------------------------------------\n";
+    cout << "              ADMINISTRATOR MANAGEMENT PORTAL          \n";
+    cout << "-------------------------------------------------------\n";
+    cout << "  1. Add New Train Record\n";
+    cout << "  2. View All Trains\n";
+    cout << "  3. View Complete Passenger Manifest (All Records)\n";
+    cout << "  4. View All Waiting List Queues\n";
+    cout << "  5. View Complete Seat Grid Matrix\n";
+    cout << "  6. Revenue & Booking Statistics Summary\n";
+    cout << "  7. Recent Cancellations (Stack LIFO) & Undo\n";
+    cout << "  0. Return to Main Portal Menu\n";
+    cout << "-------------------------------------------------------\n";
+}
+
+/*
+  FUNCTION: runPassengerPortal
+  PURPOSE: Manages the Passenger Portal interactive loop.
+*/
+void runPassengerPortal(RailwaySystem& sys, sqlite3* db) {
+    int pChoice = -1;
+    do {
+        displayPassengerMenu();
+        pChoice = readInt("Select an option (0 - 8): ", 0, 8);
+
+        switch (pChoice) {
+            case 1:
+                displayTrains(sys);
+                break;
+            case 2: {
+                cout << "\n--- Search Submenu ---\n";
+                cout << "1. Search by Train Number (Binary Search)\n";
+                cout << "2. Search by Destination (Linear Search)\n";
+                int sChoice = readInt("Select search type (1 or 2): ", 1, 2);
+                if (sChoice == 1) {
+                    searchTrainByNumber(sys);
+                } else {
+                    searchTrainByDestination(sys);
+                }
+                break;
+            }
+            case 3:
+                displayAvailableSeats(sys);
+                break;
+            case 4:
+                bookTicket(sys, db);
+                break;
+            case 5:
+                cancelTicket(sys, db);
+                break;
+            case 6:
+                cancelWaitingListEntry(sys, db);
+                break;
+            case 7:
+                displayPassengerDetails(sys);
+                break;
+            case 8:
+                sortTrains(sys);
+                break;
+            case 0:
+                cout << "\nReturning to Main Portal Menu...\n";
+                break;
+            default:
+                break;
+        }
+    } while (pChoice != 0);
+}
+
+/*
+  FUNCTION: runAdminPortal
+  PURPOSE: Authenticates administrator PIN (default: admin123) and runs management loop.
+*/
+void runAdminPortal(RailwaySystem& sys, sqlite3* db) {
+    cout << "\n[Security Authentication Required]\n";
+    string pin = readNonEmptyString("Enter Administrator PIN: ");
+
+    if (pin != "admin123") {
+        cout << "[Access Denied] Incorrect administrator PIN!\n";
+        return;
+    }
+
+    cout << "[Access Granted] Welcome, Administrator.\n";
+
+    int aChoice = -1;
+    do {
+        displayAdminMenu();
+        aChoice = readInt("Select an option (0 - 7): ", 0, 7);
+
+        switch (aChoice) {
+            case 1:
+                addTrain(sys, db);
+                break;
+            case 2:
+                displayTrains(sys);
+                break;
+            case 3:
+                displayPassengerDetails(sys);
+                break;
+            case 4:
+                displayWaitingList(sys);
+                break;
+            case 5:
+                displayAvailableSeats(sys);
+                break;
+            case 6:
+                displaySystemStats(sys);
+                break;
+            case 7: {
+                cout << "\n--- Recent Cancellations (Stack LIFO) ---\n";
+                cout << "1. View Most Recently Cancelled Ticket (Stack Top)\n";
+                cout << "2. Undo Last Cancellation (Restore Seat)\n";
+                int sChoice = readInt("Select option (1 or 2): ", 1, 2);
+                if (sChoice == 1) {
+                    viewLastCancelledTicket(sys);
+                } else {
+                    undoLastCancellation(sys, db);
+                }
+                break;
+            }
+            case 0:
+                cout << "\nReturning to Main Portal Menu...\n";
+                break;
+            default:
+                break;
+        }
+    } while (aChoice != 0);
+}
+
+/*
   FUNCTION: main
   PURPOSE: Application entry point.
-  DESIGN RULE: Does NOT contain business logic. Only initializes database, loads working memory,
-               runs the do-while menu loop, and safely closes the database connection.
 */
 int main(int argc, char* argv[]) {
     // Command-line flag inspection
     if (argc > 1) {
         string arg = argv[1];
         if (arg == "--version" || arg == "-v") {
-            cout << "Railway Ticket Reservation System v1.0.0 (C++11/SQLite3)\n";
+            cout << "Railway Ticket Reservation System v2.0.0 (C++11/SQLite3/Winsock)\n";
             cout << "Developed for B.Tech CSE (AI/ML) DSA Mini Project - Group 4\n";
             return 0;
         }
@@ -1499,7 +2303,9 @@ int main(int argc, char* argv[]) {
         }
     }
 
-    cout << "\n>>> Starting Railway Ticket Reservation System <<<\n";
+    cout << "\n=======================================================\n";
+    cout << " >>> Starting Railway Ticket Reservation System v2 <<< \n";
+    cout << "=======================================================\n";
 
     sqlite3* db = NULL;
     // Step 1: Open SQLite Database connection
@@ -1521,72 +2327,45 @@ int main(int argc, char* argv[]) {
     cout << "[System Ready] Loaded " << sys.trains.size() << " trains, " 
          << sys.passengers.size() << " passenger records from railway.db.\n";
 
-    // Step 4: Interactive menu loop
-    int choice = -1;
-    do {
-        displayMenu();
-        choice = readInt("Enter your choice (0 - 10): ", 0, 10);
+    // Step 4: Launch embedded background HTTP server on port 8080
+    std::thread webServerThread(runHttpServer, &sys, db, 8080);
+    webServerThread.detach();
+    cout << "[Web Server] Online and listening on: http://localhost:8080\n";
+    cout << "             (Open this URL in any web browser to view the modern UI!)\n";
 
-        switch (choice) {
+    // Step 5: Interactive portal selection loop
+    int mainChoice = -1;
+    do {
+        displayPortalSelectionMenu();
+        mainChoice = readInt("Select an option (0 - 3): ", 0, 3);
+
+        switch (mainChoice) {
             case 1:
-                addTrain(sys, db);
+                runPassengerPortal(sys, db);
                 break;
             case 2:
-                displayTrains(sys);
+                runAdminPortal(sys, db);
                 break;
-            case 3: {
-                cout << "\n--- Search Submenu ---\n";
-                cout << "1. Search by Train Number (Binary Search)\n";
-                cout << "2. Search by Destination (Linear Search)\n";
-                int sChoice = readInt("Select search type (1 or 2): ", 1, 2);
-                if (sChoice == 1) {
-                    searchTrainByNumber(sys);
-                } else {
-                    searchTrainByDestination(sys);
-                }
+            case 3:
+                cout << "\nOpening Web Dashboard in default browser: http://localhost:8080\n";
+#ifdef _WIN32
+                system("start http://localhost:8080");
+#elif __APPLE__
+                system("open http://localhost:8080");
+#else
+                system("xdg-open http://localhost:8080");
+#endif
                 break;
-            }
-            case 4:
-                bookTicket(sys, db);
-                break;
-            case 5:
-                cancelTicket(sys, db);
-                break;
-            case 6:
-                displayAvailableSeats(sys);
-                break;
-            case 7:
-                displayPassengerDetails(sys);
-                break;
-            case 8:
-                displayWaitingList(sys);
-                break;
-            case 9:
-                sortTrains(sys);
-                break;
-            case 10: {
-                cout << "\n--- Recent Cancellations (Module VIII: Stack LIFO) ---\n";
-                cout << "1. View Most Recently Cancelled Ticket (Stack Top)\n";
-                cout << "2. Undo Last Cancellation (Restore Seat)\n";
-                int stackChoice = readInt("Select option (1 or 2): ", 1, 2);
-                if (stackChoice == 1) {
-                    viewLastCancelledTicket(sys);
-                } else {
-                    undoLastCancellation(sys, db);
-                }
-                break;
-            }
             case 0:
-                cout << "\nSaving system state and exiting. Thank you!\n";
+                cout << "\nSaving system state and shutting down. Have a safe journey!\n";
                 break;
             default:
-                cout << "[Error] Invalid option. Try again.\n";
                 break;
         }
 
-    } while (choice != 0);
+    } while (mainChoice != 0);
 
-    // Step 5: Close SQLite database connection cleanly
+    // Step 6: Close SQLite database connection cleanly
     closeDatabase(db);
     return 0;
 }

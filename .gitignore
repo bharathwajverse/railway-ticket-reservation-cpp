@@ -26,8 +26,9 @@ w64devkit/
 *.suo
 *.user
 
-# Test Output Files
+# Test Output & User Generated Ticket Files
 test_output.txt
+ticket_*.txt
 
 # Private Study & Viva Explanation Guides (Hidden from GitHub)
 study_guide/

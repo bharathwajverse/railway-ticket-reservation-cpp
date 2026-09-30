@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.0] - 2026-10-01
+### Changed
+- Streamlined `main.cpp` into a focused, pure standard C++11 implementation strictly aligned with the 10 syllabus modules.
+- Removed Winsock socket networking, multi-threading, and mutex overhead to simplify viva defense and code review.
+- Retained interactive Web UI preview mockup in `web/index.html` for presentation purposes.
+- Removed `-lws2_32` link dependency from `build.bat`, `Makefile`, and CI workflows.
+
 ---
 
 ## [2.0.0] - 2026-09-30

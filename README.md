@@ -1,25 +1,25 @@
-# 🚆 Railway Ticket Reservation System v2.0
+# 🚆 Railway Ticket Reservation System
 
 [![C++ Standard](https://img.shields.io/badge/C%2B%2B-11-blue.svg?logo=c%2B%2B)](https://isocpp.org/)
 [![Database](https://img.shields.io/badge/Database-SQLite%203-003B57.svg?logo=sqlite)](https://www.sqlite.org/)
-[![Web UI](https://img.shields.io/badge/Web%20UI-HTML5%20%7C%20CSS3%20%7C%20REST%20API-orange.svg)](http://localhost:8080)
+[![Architecture](https://img.shields.io/badge/Architecture-10%20Modules%20DSA-success.svg)](#-10-syllabus-modules-mapping)
 [![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20Linux%20%7C%20macOS-lightgrey.svg)]()
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![CI Build Status](https://github.com/bharathwajverse/railway-ticket-reservation-cpp/actions/workflows/build.yml/badge.svg)](https://github.com/bharathwajverse/railway-ticket-reservation-cpp/actions)
 
-A complete, full-stack **C++11** application for managing railway reservations, seat layouts, age-based fare concessions, electronic tickets, cancellations, and waiting lists using core **Data Structures and Algorithms (DSA)** integrated with an **SQLite 3** relational database (`railway.db`) and a **native embedded Winsock HTTP web dashboard** (`http://localhost:8080`).
+A complete, high-performance **C++11** Railway Ticket Reservation System designed strictly around **10 core Data Structures and Programming Modules**, synchronized with an embedded **SQLite 3** relational database (`railway.db`) and persistent disk file generation for electronic ticket slips.
 
 ---
 
 ## 📌 Table of Contents
 - [Project Overview](#-project-overview)
-- [Dual-Interface Architecture](#-dual-interface-architecture)
-- [Modern Web Interface (HTML5/CSS3/JS)](#-modern-web-interface-html5css3js)
-- [DSA Concepts Used](#-dsa-concepts-used)
+- [System Architecture](#-system-architecture)
+- [10 Syllabus Modules Mapping](#-10-syllabus-modules-mapping)
 - [Key Features](#-key-features)
 - [Database Schema & ACID Transactions](#-database-schema--acid-transactions)
 - [Project Structure](#-project-structure)
 - [Quick Start Guide](#-quick-start-guide)
+- [Interactive Web UI Preview](#-interactive-web-ui-preview)
 - [Edge Case Demonstrations](#-edge-case-demonstrations)
 - [Contributing & Community](#-contributing--community)
 - [License](#-license)
@@ -27,92 +27,67 @@ A complete, full-stack **C++11** application for managing railway reservations, 
 ---
 
 ## 📖 Project Overview
-A high-performance railway ticket reservation and management engine written in modern C++11, featuring in-memory data structures (structures, 2D arrays, STL queues, vectors, maps, stacks) synchronized with an embedded SQLite 3 relational database and an embedded Winsock REST web server.
+A modular, readable, and standard-compliant C++ application engineered to showcase fundamental Computer Science and Data Structure principles in a real-world scenario. The system handles train discovery, seat matrix allocation, age concessions, atomic transactions, waiting lists with automatic promotion, and cancellation undo operations.
 
-### Core Design Philosophy
-- **Dual Interface System:** Interacts seamlessly via either the interactive terminal kiosk or the browser dashboard at `http://localhost:8080`.
-- **Fast In-Memory Operations:** Active train models, 2D seat maps, and waiting queues operate entirely in RAM for sub-millisecond lookups.
-- **Relational ACID Persistence:** Multi-table operations (booking, cancellation, auto-promotion) are wrapped in atomic transactions (`BEGIN IMMEDIATE` / `COMMIT`).
-- **Zero External Dependencies:** Built with pure C++11, Windows Winsock2 (`-lws2_32`), and SQLite amalgamation. No Node.js, Python, or Apache required!
+### Core Design Principles
+- **Strictly Modular (10 Modules):** Direct 1-to-1 mapping with academic Computer Science syllabus modules.
+- **Pure Standard C++11:** No complex external networking dependencies, socket threads, or platform locks. Runs anywhere with a standard C++ compiler.
+- **Fast In-Memory Data Structures:** In-memory 2D seat maps ($O(1)$), binary search on sorted trains ($O(\log N)$), FIFO waitlists, and LIFO cancellation stacks.
+- **ACID Persistence:** Embedded SQLite 3 database (`railway.db`) preserves train fleets, passenger manifests, and waiting queues across reboots.
 
 ---
 
-## 🏛️ Dual-Interface Architecture
+## 🏛️ System Architecture
 
 ```mermaid
 flowchart TD
-    subgraph ClientLayer["User Interfaces"]
-        CLI["Terminal Kiosk (Console Menu)<br/>- Passenger Portal<br/>- Admin Portal (PIN Protected)"]
-        Browser["Modern Web Dashboard (Browser)<br/>- Single Page App (HTML5/CSS3/JS)<br/>- Interactive Visual Seat Grid<br/>- Live Concession & Fare Calculator<br/>- PNR Lookup & E-Ticket Download"]
+    subgraph UI["User Interface"]
+        CLI["Terminal Kiosk (Console Menu)<br/>- 11 Core Operations<br/>- Clean Input Validation & Menus"]
     end
 
-    subgraph ServerLayer["Unified C++11 Backend (main.cpp)"]
-        HTTP["Embedded Winsock HTTP Server<br/>(Port 8080, Multi-threaded)"]
-        Router["REST API Request Dispatcher<br/>(/api/trains, /api/seats, /api/book, /api/cancel, /api/stats)"]
-        CoreDSA["In-Memory Data Structures (Dual Storage)<br/>- vector&lt;Train&gt; (Binary Search)<br/>- 2D Array seatMap[20][60] (O(1) Matrix)<br/>- map&lt;int, queue&lt;WaitingEntry&gt;&gt; (FIFO Queue)<br/>- stack&lt;Passenger&gt; (LIFO Undo)"]
-        Logic["Business Logic Layer<br/>- Age Concession Engine (Child 50%, Senior 40%)<br/>- Manual & Greedy Seat Allocator<br/>- E-Ticket Text Generator (&lt;fstream&gt;)<br/>- Waitlist Direct Cancellation"]
+    subgraph Core["Core 10-Module DSA Engine (main.cpp)"]
+        M1["Module I: C++ Basics & Formatted I/O"]
+        M2["Module II: Control Structures (do-while, switch)"]
+        M3["Module III: 1D Arrays (Month days, seat vectors)"]
+        M4["Module IV: 2D Arrays (seatMap[20][60] Layout Matrix)"]
+        M5["Module V: Strings & Text Case-Insensitive Matching"]
+        M6["Module VI: Structs (Date, Train, Passenger, WaitingEntry)"]
+        M7["Module VII: Algorithms & Complexity (O(1), O(log N), O(N^2))"]
+        M8["Module VIII: Stacks (LIFO Ticket Cancellation Undo)"]
+        M9["Module IX: Queues (FIFO Waitlist & Auto-Promotion)"]
+        M10["Module X: STL Containers (vector, queue, stack, map)"]
     end
 
-    subgraph StorageLayer["Persistence Layer"]
-        DB[(SQLite 3 Database - railway.db<br/>- Atomic Transactions: BEGIN / COMMIT<br/>- Trains, Passengers, WaitingList tables)]
-        Receipts["Local Disk Files<br/>- ticket_&lt;PNR&gt;.txt E-Receipts"]
+    subgraph Storage["Persistence & Files"]
+        DB[(SQLite 3 Database - railway.db<br/>- Trains, Passengers, WaitingList)]
+        Receipts["Disk Receipts<br/>- ticket_<PNR>.txt E-Slips"]
     end
 
-    CLI --> CoreDSA
-    CLI --> Logic
-    Browser -->|HTTP GET/POST JSON| HTTP
-    HTTP --> Router
-    Router --> Logic
-    Logic <--> CoreDSA
-    Logic <--> DB
-    Logic --> Receipts
+    CLI --> Core
+    Core <--> DB
+    Core --> Receipts
 ```
 
 ---
 
-## 🌐 Modern Web Interface (HTML5/CSS3/JS)
+## 💡 10 Syllabus Modules Mapping
 
-When `railway.exe` launches, an embedded background thread automatically starts a native HTTP server listening on **`http://localhost:8080`**.
+Every aspect of `main.cpp` maps directly to the 10 fundamental modules:
 
-### Web Features:
-1. **Interactive Visual Seat Grid:** Clickable coach layout with real-time green/red seat availability. Clicking an open seat instantly chooses it for booking!
-2. **Live Concession Calculator:** Dynamic real-time calculation of Senior Citizen (40% discount) and Child (50% discount) fares as age is entered.
-3. **Instant PNR Lookup & E-Ticket Download:** Inspect booking status and download the official `ticket_<PNR>.txt` receipt slip directly in the browser.
-4. **Live Admin Analytics Dashboard:** Visual metric cards displaying total trains, confirmed bookings, cancellations, waitlist count, and total net revenue.
-
-### REST API Endpoints:
-| Endpoint | Method | Description |
-|---|---|---|
-| `/` | `GET` | Serves the responsive Single-Page Application (`web/index.html`) |
-| `/api/trains` | `GET` | Returns JSON array of all operational trains |
-| `/api/seats?trainNo=X` | `GET` | Returns 2D seat occupancy matrix for train `X` |
-| `/api/pnr?pnr=X` | `GET` | Returns passenger details, seat, concession, and fare |
-| `/api/stats` | `GET` | Returns system-wide booking & revenue statistics |
-| `/api/manifest` | `GET` | Returns complete passenger manifest table |
-| `/api/ticket?pnr=X` | `GET` | Returns formatted plain text e-ticket slip |
-| `/api/book` | `POST` | Processes booking with seat selection and concession |
-| `/api/cancel` | `POST` | Cancels ticket and triggers queue auto-promotion |
+| Module | Topic | Implementation in `main.cpp` | Complexity / Concept |
+|---|---|---|---|
+| **Module I** | **C++ Basics & I/O** | `cin`, `cout`, `<iomanip>` stream manipulators, formatting tables | $O(1)$ stream I/O |
+| **Module II** | **Control Structures** | `do-while` main loop, `switch-case` menu dispatcher, `if-else` date/seat validation | Decision branching |
+| **Module III** | **1D Arrays** | `daysInMonth[]` leap year array, boolean seat checks | $O(1)$ calendar indexing |
+| **Module IV** | **2D Arrays** | `seatMap[MAX_TRAINS][MAX_SEATS]` coach layout matrix | $O(1)$ seat inspection |
+| **Module V** | **Strings** | `std::string`, `toLowerCase()`, `containsIgnoreCase()` substring search | Text manipulation |
+| **Module VI** | **Structures** | `struct Date`, `Train`, `Passenger`, `WaitingEntry`, `RailwaySystem` | Heterogeneous records |
+| **Module VII** | **Complexity & Algorithms** | $O(1)$ matrix indexing, $O(\log N)$ Binary Search, $O(N)$ Linear Search, $O(N^2)$ Bubble Sort | Algorithm analysis |
+| **Module VIII** | **Stacks** | `std::stack<Passenger> recentCancellations` for LIFO undo | $O(1)$ push / pop undo |
+| **Module IX** | **Queues** | `std::queue<WaitingEntry>` FIFO waiting list with auto-promotion | $O(1)$ push / pop fairness |
+| **Module X** | **STL Containers** | `std::vector`, `std::queue`, `std::stack`, `std::map` | Standard Template Library |
 
 ---
-
-## 💡 DSA Concepts Used
-
-| DSA Concept | Implementation | Real-World Application in System |
-|---|---|---|
-| **Structures (`struct`)** | `main.cpp` (Section 1) | Groups heterogeneous properties for entities (`Train`, `Passenger`, `WaitingEntry`). |
-| **Nested Structures** | `main.cpp` (Section 1) | `struct Date` (day, month, year) nested inside passenger and queue records. |
-| **2D Arrays** | `main.cpp` (Section 1 & 4) | `seatMap[MAX_TRAINS][MAX_SEATS]` provides $O(1)$ random access to check/mark seat availability. |
-| **1D Arrays** | `main.cpp` (Section 2) | Static lookup array for calendar month days and leap year handling. |
-| **FIFO Queue (`std::queue`)** | `main.cpp` (Section 1 & 4) | Maintains waiting passengers in strict First-In, First-Out order for fair promotions. |
-| **LIFO Stack (`std::stack`)** | `main.cpp` (Section 1 & 4) | Tracks recent ticket cancellations for $O(1)$ inspection and undo operations. |
-| **Map (`std::map`)** | `main.cpp` (Section 1 & 4) | Associates each unique `trainNo` with its own isolated waiting queue. |
-| **Dynamic Vector (`std::vector`)** | `main.cpp` (Section 1 & 4) | Dynamic storage for trains and passengers with index-based operations. |
-| **Binary Search** | `main.cpp` (Section 4) | Achieves $O(\log N)$ fast lookup for trains by train number on a sorted vector. |
-| **Linear Search** | `main.cpp` (Section 4) | $O(N)$ scanning for partial destination matches and PNR lookups. |
-| **Bubble Sort** | `main.cpp` (Section 4) | Manual $O(N^2)$ sorting by fare or name on a copy vector for display. |
-| **File I/O (`std::ofstream`)** | `main.cpp` (Section 2) | Serializes official electronic ticket slips (`ticket_<PNR>.txt`) to disk. |
-| **Thread Synchronization** | `main.cpp` (Section 5) | `std::mutex` ensures thread-safe concurrent access across terminal and web requests. |
-
 ---
 
 ## ✨ Key Features
@@ -226,7 +201,7 @@ Double-click **`run.bat`** (or execute in PowerShell/CMD):
 ```cmd
 run.bat
 ```
-Then open your web browser to **`http://localhost:8080`** to access the modern web dashboard!
+This will compile `railway.exe` (if not already compiled) and launch the interactive 11-option terminal menu.
 
 Or compile manually:
 ```cmd
@@ -247,11 +222,15 @@ make
 ./railway
 ```
 
-### Command-Line Flags
-```cmd
-railway.exe --version   # Displays software version and project metadata
-railway.exe --help      # Displays command-line argument help
-```
+---
+
+## 🌐 Interactive Web UI Preview
+
+An interactive Single-Page Application (HTML5/CSS3/JavaScript) is provided in `web/index.html`. Double-click or open `web/index.html` in any browser to explore the conceptual web dashboard, including:
+- Visual coach seat layout grid
+- Real-time age-based concession calculator
+- E-Ticket preview & receipt generator
+- Admin analytics overview
 
 ---
 

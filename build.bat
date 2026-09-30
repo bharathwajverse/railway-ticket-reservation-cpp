@@ -1,5 +1,5 @@
 @echo off
-set "PATH=%~dp0w64devkit\bin;%PATH%"
+set "PATH=C:\Users\bharathwaj\.local\w64devkit\bin;%PATH%"
 
 echo ========================================================
 echo  Compiling Railway Ticket Reservation System
@@ -16,8 +16,8 @@ if not exist "%~dp0sqlite3.o" (
     echo [1/2] Using existing sqlite3.o
 )
 
-echo [2/2] Compiling C++ source files with g++
-g++ -std=c++11 -Wall -Wextra "%~dp0main.cpp" "%~dp0utils.cpp" "%~dp0database.cpp" "%~dp0railway.cpp" "%~dp0sqlite3.o" -o "%~dp0railway.exe"
+echo [2/2] Compiling main.cpp with g++
+g++ -std=c++11 -Wall -Wextra "%~dp0main.cpp" "%~dp0sqlite3.o" -o "%~dp0railway.exe"
 if errorlevel 1 (
     echo [ERROR] Build failed!
     exit /b 1

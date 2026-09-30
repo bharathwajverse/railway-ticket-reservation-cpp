@@ -16,7 +16,7 @@ else
 endif
 
 # Source Files & Objects
-SRCS = main.cpp utils.cpp database.cpp railway.cpp
+SRCS = main.cpp
 OBJS = $(SRCS:.cpp=.o) sqlite3.o
 
 # Default target
@@ -35,7 +35,7 @@ $(TARGET): $(OBJS)
 sqlite3.o: sqlite3.c sqlite3.h
 	$(CC) $(CFLAGS) -c sqlite3.c -o sqlite3.o
 
-# Run demo
+# Run application
 run: $(TARGET)
 	./$(TARGET)
 

@@ -18,15 +18,10 @@ jobs:
         run: gcc -O2 -c sqlite3.c -o sqlite3.o
 
       - name: Build Application
-        run: g++ -std=c++11 -Wall -Wextra main.cpp utils.cpp database.cpp railway.cpp sqlite3.o -o railway -lpthread -ldl
-
-      - name: Build Circular Queue Demo
-        run: g++ -std=c++11 -Wall -Wextra array_queue_demo.cpp -o array_queue_demo
+        run: g++ -std=c++11 -Wall -Wextra main.cpp sqlite3.o -o railway -lpthread -ldl
 
       - name: Test Execution
-        run: |
-          echo "0" | ./railway
-          ./array_queue_demo
+        run: echo "0" | ./railway
 
   build-windows:
     name: Build on Windows
@@ -43,10 +38,7 @@ jobs:
       - name: Compile Application
         run: |
           gcc -O2 -c sqlite3.c -o sqlite3.o
-          g++ -std=c++11 -Wall -Wextra main.cpp utils.cpp database.cpp railway.cpp sqlite3.o -o railway.exe
-          g++ -std=c++11 -Wall -Wextra array_queue_demo.cpp -o array_queue_demo.exe
+          g++ -std=c++11 -Wall -Wextra main.cpp sqlite3.o -o railway.exe
 
       - name: Test Run
-        run: |
-          echo 0 | .\railway.exe
-          .\array_queue_demo.exe
+        run: echo 0 | .\railway.exe

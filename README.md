@@ -52,17 +52,17 @@ flowchart TD
 
 | DSA Concept | Source File | Real-World Application in System |
 |---|---|---|
-| **Structures (`struct`)** | `structures.h` | Groups heterogeneous properties for entities (`Train`, `Passenger`, `WaitingEntry`). |
-| **Nested Structures** | `structures.h` | `struct Date` (day, month, year) nested inside passenger and queue records. |
-| **2D Arrays** | `railway.cpp` | `seatMap[MAX_TRAINS][MAX_SEATS]` provides $O(1)$ random access to check/mark seat availability. |
-| **1D Arrays** | `utils.cpp` | Static lookup array for calendar month days and leap year handling. |
-| **FIFO Queue (`std::queue`)** | `railway.cpp` | Maintains waiting passengers in strict First-In, First-Out order for fair promotions (Module IX). |
-| **LIFO Stack (`std::stack`)** | `railway.cpp` | Tracks recent ticket cancellations for $O(1)$ inspection and undo operations (Module VIII). |
-| **Map (`std::map`)** | `railway.cpp` | Associates each unique `trainNo` with its own isolated waiting queue. |
-| **Dynamic Vector (`std::vector`)** | `railway.cpp` | Dynamic storage for trains and passengers with index-based operations. |
-| **Binary Search** | `railway.cpp` | Achieves $O(\log N)$ fast lookup for trains by train number on a sorted vector. |
-| **Linear Search** | `railway.cpp` | $O(N)$ scanning for partial destination matches and PNR lookups. |
-| **Bubble Sort** | `railway.cpp` | Manual $O(N^2)$ sorting by fare or name on a copy vector for display. |
+| **Structures (`struct`)** | `main.cpp` (Section 1) | Groups heterogeneous properties for entities (`Train`, `Passenger`, `WaitingEntry`). |
+| **Nested Structures** | `main.cpp` (Section 1) | `struct Date` (day, month, year) nested inside passenger and queue records. |
+| **2D Arrays** | `main.cpp` (Section 1 & 4) | `seatMap[MAX_TRAINS][MAX_SEATS]` provides $O(1)$ random access to check/mark seat availability. |
+| **1D Arrays** | `main.cpp` (Section 2) | Static lookup array for calendar month days and leap year handling. |
+| **FIFO Queue (`std::queue`)** | `main.cpp` (Section 1 & 4) | Maintains waiting passengers in strict First-In, First-Out order for fair promotions (Module IX). |
+| **LIFO Stack (`std::stack`)** | `main.cpp` (Section 1 & 4) | Tracks recent ticket cancellations for $O(1)$ inspection and undo operations (Module VIII). |
+| **Map (`std::map`)** | `main.cpp` (Section 1 & 4) | Associates each unique `trainNo` with its own isolated waiting queue. |
+| **Dynamic Vector (`std::vector`)** | `main.cpp` (Section 1 & 4) | Dynamic storage for trains and passengers with index-based operations. |
+| **Binary Search** | `main.cpp` (Section 4) | Achieves $O(\log N)$ fast lookup for trains by train number on a sorted vector. |
+| **Linear Search** | `main.cpp` (Section 4) | $O(N)$ scanning for partial destination matches and PNR lookups. |
+| **Bubble Sort** | `main.cpp` (Section 4) | Manual $O(N^2)$ sorting by fare or name on a copy vector for display. |
 
 ---
 
@@ -144,16 +144,10 @@ railway-ticket-reservation-cpp/
 ├── .github/
 │   └── workflows/
 │       └── build.yml       # Automated GitHub Actions CI workflow
-├── main.cpp                # Main menu driver and program loop
-├── structures.h            # Data structures and system constants
-├── utils.h / utils.cpp     # Input validation, sanitization, and string tools
-├── database.h / database.cpp # SQLite API encapsulation with prepared statements
-├── railway.h / railway.cpp # Train, booking, seat map, and queue logic
+├── main.cpp                # Complete, all-in-one C++ source file with instructional comments
 ├── sqlite3.c / sqlite3.h   # SQLite 3 official amalgamation C source
 ├── Makefile                # Cross-platform Makefile (Linux, macOS, MinGW)
 ├── build.bat               # Windows one-click compilation script
-├── test_workflow.ps1       # Automated end-to-end test script
-├── array_queue_demo.cpp    # Bonus Module IX: Array-based circular queue
 ├── COMPLEXITY.md           # Asymptotic time/space complexity analysis
 ├── VIVA_QA.md              # 40+ curated viva voce questions & answers
 ├── LICENSE                 # MIT Open-Source License

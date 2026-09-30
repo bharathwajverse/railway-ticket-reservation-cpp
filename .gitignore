@@ -28,3 +28,10 @@ w64devkit/
 
 # Test Output Files
 test_output.txt
+
+# Private Study & Viva Explanation Guides (Hidden from GitHub)
+study_guide/
+notes/
+*EXPLANATION*
+*STUDY*
+

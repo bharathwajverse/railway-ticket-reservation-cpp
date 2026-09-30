@@ -7,7 +7,7 @@ CFLAGS = -O2
 # Detect OS for libraries and binary name
 ifeq ($(OS),Windows_NT)
     TARGET = railway.exe
-    LDFLAGS = -lws2_32
+    LDFLAGS =
     RM = del /Q /F
 else
     TARGET = railway

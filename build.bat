@@ -24,7 +24,7 @@ if not exist "%~dp0sqlite3.o" (
 )
 
 echo [2/2] Compiling main.cpp with g++
-g++ -std=c++11 -Wall -Wextra "%~dp0main.cpp" "%~dp0sqlite3.o" -lws2_32 -o "%~dp0railway.exe"
+g++ -std=c++11 -Wall -Wextra "%~dp0main.cpp" "%~dp0sqlite3.o" -o "%~dp0railway.exe"
 if errorlevel 1 (
     echo [ERROR] Build failed!
     exit /b 1

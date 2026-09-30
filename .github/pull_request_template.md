@@ -9,6 +9,6 @@ Please include a summary of the change, relevant motivation, and context.
 
 ## Checklist
 - [ ] Code compiles cleanly with `-Wall -Wextra` (0 warnings).
-- [ ] Adheres strictly to syllabus procedural constraints (`struct` over `class`).
+- [ ] Adheres to architectural constraints (pure procedural `struct` and standard STL containers).
 - [ ] Tested persistence with SQLite backend (`railway.db`).
 - [ ] Updated `README.md` if applicable.

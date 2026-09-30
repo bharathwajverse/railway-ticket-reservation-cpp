@@ -27,7 +27,7 @@ A complete, full-stack **C++11** application for managing railway reservations, 
 ---
 
 ## 📖 Project Overview
-Designed as an elite first-year college DSA mini-project for **Group 4 (B.Tech CSE - AI/ML)**, this application demonstrates the practical application of fundamental data structures (structures, 2D arrays, STL queues, vectors, maps, stacks) in a real-world scenario.
+A high-performance railway ticket reservation and management engine written in modern C++11, featuring in-memory data structures (structures, 2D arrays, STL queues, vectors, maps, stacks) synchronized with an embedded SQLite 3 relational database and an embedded Winsock REST web server.
 
 ### Core Design Philosophy
 - **Dual Interface System:** Interacts seamlessly via either the interactive terminal kiosk or the browser dashboard at `http://localhost:8080`.
@@ -42,7 +42,7 @@ Designed as an elite first-year college DSA mini-project for **Group 4 (B.Tech C
 ```mermaid
 flowchart TD
     subgraph ClientLayer["User Interfaces"]
-        CLI["Terminal Kiosk (Console Menu)<br/>- Passenger Portal<br/>- Admin Portal (PIN: admin123)"]
+        CLI["Terminal Kiosk (Console Menu)<br/>- Passenger Portal<br/>- Admin Portal (PIN Protected)"]
         Browser["Modern Web Dashboard (Browser)<br/>- Single Page App (HTML5/CSS3/JS)<br/>- Interactive Visual Seat Grid<br/>- Live Concession & Fare Calculator<br/>- PNR Lookup & E-Ticket Download"]
     end
 
@@ -119,7 +119,7 @@ When `railway.exe` launches, an embedded background thread automatically starts 
 
 1. **Role-Based Portals:**
    - **Passenger Portal:** Train schedules, seat checking, ticket booking, cancellation, PNR status, and e-ticket export.
-   - **Administrator Portal (PIN Protected: `admin123`):** Add trains, view passenger manifests, view seat grids, view waitlists, and review revenue analytics.
+   - **Administrator Portal (PIN Protected):** Add trains, view passenger manifests, view seat grids, view waitlists, and review revenue analytics.
 2. **Age-Based Fare Concessions:**
    - Child ($< 12$ years): **50% discount**.
    - Senior Citizen ($\ge 60$ years): **40% discount**.

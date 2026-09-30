@@ -14,7 +14,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Electronic ticket text file export (`ticket_<PNR>.txt`) via `std::ofstream`.
 - Manual seat selection option with visual coach seat map alongside auto-assign.
 - Direct cancellation of waiting list entries from FIFO queue and SQLite database.
-- Role-based separation into Passenger Portal and PIN-protected Administrator Portal (`admin123`).
+- Role-based separation into Passenger Portal and PIN-protected Administrator Portal.
 - Executive Analytics Dashboard (Revenue, Bookings, Waitlist, Occupancy).
 - Atomic SQLite transactions (`BEGIN IMMEDIATE TRANSACTION;` / `COMMIT;` / `ROLLBACK;`) for ACID consistency.
 
@@ -22,7 +22,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [1.2.0] - 2026-09-30
 ### Added
-- Unified all application logic into a single clean file (`main.cpp`) for transparent code defense.
+- Unified all application logic into a single clean file (`main.cpp`) for simplified deployment and readability.
 - Added comprehensive multi-line instructional comments across all functions and structures.
 - Added CLI command-line argument flags (`--version`, `--help`).
 - Added SQLite PRAGMA performance and integrity tuning (`foreign_keys = ON`, `synchronous = NORMAL`).
@@ -30,7 +30,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Added GitHub issue templates and PR template.
 
 ### Changed
-- Streamlined repository structure, isolating private preparation guides from public git history.
+- Streamlined repository structure and excluded build artifacts from git history.
 
 ---
 
@@ -44,7 +44,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [1.0.0] - 2026-09-30
 ### Initial Release
-- Core railway reservation system matching all Group 4 college requirements.
+- Core railway reservation system with complete seat management.
 - Binary Search for train lookup by train number ($O(\log N)$).
 - Linear Search for destination with case-insensitive partial substring matching ($O(N)$).
 - Manual Bubble Sort on a copy vector for display by fare or name ($O(N^2)$).

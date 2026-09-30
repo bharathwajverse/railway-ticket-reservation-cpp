@@ -8,26 +8,7 @@
 #include <cctype>
 #include <cstdlib>
 #include <fstream>
-#include <sstream>
-#include <thread>
-#include <mutex>
 #include "sqlite3.h"
-
-#ifdef _WIN32
-    #include <winsock2.h>
-    #include <ws2tcpip.h>
-    typedef int socklen_t;
-    #define CLOSE_SOCKET(s) closesocket(s)
-#else
-    #include <sys/socket.h>
-    #include <netinet/in.h>
-    #include <arpa/inet.h>
-    #include <unistd.h>
-    typedef int SOCKET;
-    #define INVALID_SOCKET (-1)
-    #define SOCKET_ERROR (-1)
-    #define CLOSE_SOCKET(s) close(s)
-#endif
 
 using namespace std;
 
@@ -35,10 +16,10 @@ const int MAX_TRAINS = 20;
 const int MAX_SEATS = 60;
 const int MAX_WAITING = 10;
 
-mutex g_sysMutex;
-
 struct Date {
-    int day, month, year;
+    int day;
+    int month;
+    int year;
 };
 
 struct Train {
@@ -74,15 +55,6 @@ struct WaitingEntry {
     Date travelDate;
 };
 
-struct SystemStats {
-    int totalTrains;
-    int totalBookings;
-    int confirmedBookings;
-    int cancelledBookings;
-    int totalWaitlisted;
-    float totalRevenue;
-};
-
 struct RailwaySystem {
     vector<Train> trains;
     vector<Passenger> passengers;
@@ -97,9 +69,9 @@ bool isLeapYear(int y) {
 
 bool isValidDate(int d, int m, int y) {
     if (y < 2024 || y > 2035 || m < 1 || m > 12) return false;
-    int days[] = { 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
-    if (m == 2 && isLeapYear(y)) days[1] = 29;
-    return d >= 1 && d <= days[m - 1];
+    int daysInMonth[] = { 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
+    if (m == 2 && isLeapYear(y)) daysInMonth[1] = 29;
+    return d >= 1 && d <= daysInMonth[m - 1];
 }
 
 string toLowerCase(string s) {
@@ -210,18 +182,6 @@ bool openDatabase(sqlite3*& db, const char* fileName) {
 
 void closeDatabase(sqlite3* db) {
     if (db) sqlite3_close(db);
-}
-
-bool beginTransaction(sqlite3* db) {
-    return sqlite3_exec(db, "BEGIN IMMEDIATE TRANSACTION;", NULL, NULL, NULL) == SQLITE_OK;
-}
-
-bool commitTransaction(sqlite3* db) {
-    return sqlite3_exec(db, "COMMIT;", NULL, NULL, NULL) == SQLITE_OK;
-}
-
-bool rollbackTransaction(sqlite3* db) {
-    return sqlite3_exec(db, "ROLLBACK;", NULL, NULL, NULL) == SQLITE_OK;
 }
 
 bool createTables(sqlite3* db) {
@@ -577,10 +537,8 @@ bool promoteFromWaitingList(RailwaySystem& sys, sqlite3* db, int trainIndex, int
     promoted.concession = concessionTier;
     promoted.farePaid = finalFare;
 
-    beginTransaction(db);
     sys.seatMap[trainIndex][seatNo - 1] = 1;
     insertPassenger(db, promoted);
-    commitTransaction(db);
 
     sys.passengers.push_back(promoted);
     exportTicketToFile(promoted, sys.trains[trainIndex]);
@@ -611,7 +569,6 @@ void bookTicket(RailwaySystem& sys, sqlite3* db) {
     cout << "\nFare: Rs. " << train.fare << " | Concession: " << concessionTier
          << " | Payable: Rs. " << fixed << setprecision(2) << finalFare << "\n";
 
-    lock_guard<mutex> lock(g_sysMutex);
     int freeSeat = findFreeSeat(sys, trainIdx);
 
     if (freeSeat != -1 && train.availableSeats > 0) {
@@ -638,12 +595,10 @@ void bookTicket(RailwaySystem& sys, sqlite3* db) {
         p.concession = concessionTier;
         p.farePaid = finalFare;
 
-        beginTransaction(db);
         sys.seatMap[trainIdx][allocatedSeat - 1] = 1;
         train.availableSeats--;
         updateTrainSeats(db, trainNo, train.availableSeats);
         insertPassenger(db, p);
-        commitTransaction(db);
 
         sys.passengers.push_back(p);
         exportTicketToFile(p, train);
@@ -672,7 +627,6 @@ void cancelTicket(RailwaySystem& sys, sqlite3* db) {
     cout << "\n--- Cancel Ticket ---\n";
     int pnr = readInt("Enter PNR number: ", 1000, 999999);
 
-    lock_guard<mutex> lock(g_sysMutex);
     int pIdx = findPassengerByPNR(sys, pnr);
     if (pIdx == -1) {
         cout << "No booking record found for PNR " << pnr << ".\n";
@@ -688,7 +642,6 @@ void cancelTicket(RailwaySystem& sys, sqlite3* db) {
     int trainIdx = findTrainIndex(sys, p.trainNo);
     int freedSeat = p.seatNo;
 
-    beginTransaction(db);
     p.status = "CANCELLED";
     updatePassengerStatus(db, pnr, "CANCELLED");
 
@@ -699,7 +652,6 @@ void cancelTicket(RailwaySystem& sys, sqlite3* db) {
         sys.trains[trainIdx].availableSeats++;
         updateTrainSeats(db, p.trainNo, sys.trains[trainIdx].availableSeats);
     }
-    commitTransaction(db);
 
     sys.recentCancellations.push(p);
     cout << "\n[Cancelled] Ticket PNR " << pnr << " has been cancelled.\n";
@@ -712,7 +664,6 @@ void cancelWaitingListEntry(RailwaySystem& sys, sqlite3* db) {
     int trainNo = readInt("Enter Train Number: ", 1000, 99999);
     string passengerName = readNonEmptyString("Passenger Name: ");
 
-    lock_guard<mutex> lock(g_sysMutex);
     if (sys.waitingLists.find(trainNo) == sys.waitingLists.end() || sys.waitingLists[trainNo].empty()) {
         cout << "No waiting passengers for Train #" << trainNo << ".\n";
         return;
@@ -745,7 +696,6 @@ void cancelWaitingListEntry(RailwaySystem& sys, sqlite3* db) {
 
 void undoLastCancellation(RailwaySystem& sys, sqlite3* db) {
     cout << "\n--- Undo Last Cancellation ---\n";
-    lock_guard<mutex> lock(g_sysMutex);
 
     if (sys.recentCancellations.empty()) {
         cout << "No recent cancellations to undo.\n";
@@ -767,7 +717,6 @@ void undoLastCancellation(RailwaySystem& sys, sqlite3* db) {
     int newSeat = findFreeSeat(sys, trainIdx);
     if (newSeat == -1) return;
 
-    beginTransaction(db);
     sys.passengers[pIdx].status = "CONFIRMED";
     sys.passengers[pIdx].seatNo = newSeat;
     updatePassengerStatus(db, lastCancelled.pnr, "CONFIRMED");
@@ -775,7 +724,6 @@ void undoLastCancellation(RailwaySystem& sys, sqlite3* db) {
     sys.seatMap[trainIdx][newSeat - 1] = 1;
     sys.trains[trainIdx].availableSeats--;
     updateTrainSeats(db, lastCancelled.trainNo, sys.trains[trainIdx].availableSeats);
-    commitTransaction(db);
 
     exportTicketToFile(sys.passengers[pIdx], sys.trains[trainIdx]);
     cout << "\n[Restored] Ticket PNR " << lastCancelled.pnr << " reinstated (Seat #" << newSeat << ").\n";
@@ -794,59 +742,6 @@ void checkPNRStatus(const RailwaySystem& sys) {
          << "  Train: #" << p.trainNo << " | Seat: #" << p.seatNo << "\n"
          << "  Date: " << p.travelDate.day << "/" << p.travelDate.month << "/" << p.travelDate.year << "\n"
          << "  Status: " << p.status << " | Concession: " << p.concession << " | Fare Paid: Rs. " << fixed << setprecision(2) << p.farePaid << "\n";
-}
-
-SystemStats calculateStats(const RailwaySystem& sys) {
-    SystemStats s;
-    s.totalTrains = (int)sys.trains.size();
-    s.totalBookings = (int)sys.passengers.size();
-    s.confirmedBookings = 0;
-    s.cancelledBookings = 0;
-    s.totalWaitlisted = 0;
-    s.totalRevenue = 0.0f;
-
-    for (size_t i = 0; i < sys.passengers.size(); i++) {
-        if (sys.passengers[i].status == "CONFIRMED") {
-            s.confirmedBookings++;
-            s.totalRevenue += sys.passengers[i].farePaid;
-        } else {
-            s.cancelledBookings++;
-        }
-    }
-    for (auto it = sys.waitingLists.begin(); it != sys.waitingLists.end(); ++it) {
-        s.totalWaitlisted += (int)it->second.size();
-    }
-    return s;
-}
-
-void displaySystemStats(const RailwaySystem& sys) {
-    SystemStats s = calculateStats(sys);
-    cout << "\n---------------- System Analytics ----------------\n"
-         << "  Total Trains in Fleet  : " << s.totalTrains << "\n"
-         << "  Total Tickets Handled  : " << s.totalBookings << "\n"
-         << "  Confirmed Bookings     : " << s.confirmedBookings << "\n"
-         << "  Cancelled Tickets      : " << s.cancelledBookings << "\n"
-         << "  Active Waiting Queue   : " << s.totalWaitlisted << "\n"
-         << "  Total Revenue Collected: Rs. " << fixed << setprecision(2) << s.totalRevenue << "\n"
-         << "--------------------------------------------------\n";
-}
-
-void displayManifest(const RailwaySystem& sys) {
-    if (sys.passengers.empty()) {
-        cout << "\nNo passenger bookings recorded.\n";
-        return;
-    }
-    cout << "\n" << setw(6) << "PNR" << " | " << setw(18) << left << "Passenger" << " | "
-         << setw(6) << "Age/G" << " | " << setw(7) << "Train#" << " | " << setw(5) << "Seat" << " | "
-         << setw(11) << "Status" << " | " << setw(10) << "Fare Paid" << right << "\n";
-    cout << "----------------------------------------------------------------------------\n";
-    for (size_t i = 0; i < sys.passengers.size(); i++) {
-        const Passenger& p = sys.passengers[i];
-        string ageGen = to_string(p.age) + "/" + string(1, p.gender);
-        cout << setw(6) << p.pnr << " | " << setw(18) << left << p.name << " | "
-             << setw(6) << ageGen << " | " << setw(7) << p.trainNo << " | " << setw(5) << p.seatNo << " | "
-             << setw(11) << p.status << " | Rs. " << setw(7) << fixed << setprecision(2) << p.farePaid << right << "\n";
-    }
 }
 
 void addTrain(RailwaySystem& sys, sqlite3* db) {
@@ -869,508 +764,20 @@ void addTrain(RailwaySystem& sys, sqlite3* db) {
     string dummy;
     getline(cin, dummy);
 
-    lock_guard<mutex> lock(g_sysMutex);
     insertTrain(db, t);
     insertTrainSorted(sys.trains, t);
     cout << "\n[Added] Train #" << t.trainNo << " (" << t.name << ") successfully registered.\n";
 }
 
-string extractJsonField(const string& json, const string& key) {
-    string target = "\"" + key + "\":";
-    size_t pos = json.find(target);
-    if (pos == string::npos) return "";
-    pos += target.length();
-    while (pos < json.length() && (json[pos] == ' ' || json[pos] == '\t')) pos++;
-    if (pos >= json.length()) return "";
-
-    if (json[pos] == '\"') {
-        pos++;
-        size_t endPos = json.find('\"', pos);
-        return (endPos != string::npos) ? json.substr(pos, endPos - pos) : "";
-    } else {
-        size_t endPos = pos;
-        while (endPos < json.length() && json[endPos] != ',' && json[endPos] != '}' && json[endPos] != '\r' && json[endPos] != '\n' && json[endPos] != ' ') {
-            endPos++;
-        }
-        return json.substr(pos, endPos - pos);
-    }
-}
-
-string getQueryParam(const string& path, const string& key) {
-    string target = key + "=";
-    size_t pos = path.find(target);
-    if (pos == string::npos) return "";
-    pos += target.length();
-    size_t endPos = path.find('&', pos);
-    if (endPos == string::npos) endPos = path.find(' ', pos);
-    if (endPos == string::npos) endPos = path.length();
-    return path.substr(pos, endPos - pos);
-}
-
-void sendHttpResponse(SOCKET s, const string& contentType, const string& body, int status = 200) {
-    string statusText = (status == 200) ? "200 OK" : "404 Not Found";
-    string header = "HTTP/1.1 " + statusText + "\r\n"
-                    "Content-Type: " + contentType + "\r\n"
-                    "Access-Control-Allow-Origin: *\r\n"
-                    "Content-Length: " + to_string(body.length()) + "\r\n"
-                    "Connection: close\r\n\r\n";
-    send(s, header.c_str(), (int)header.length(), 0);
-    send(s, body.c_str(), (int)body.length(), 0);
-    CLOSE_SOCKET(s);
-}
-
-string passengerToJson(const Passenger& p) {
-    stringstream json;
-    json << "{\"pnr\":" << p.pnr << ",\"name\":\"" << p.name << "\",\"age\":" << p.age
-         << ",\"gender\":\"" << p.gender << "\",\"trainNo\":" << p.trainNo << ",\"seatNo\":" << p.seatNo
-         << ",\"date\":\"" << p.travelDate.day << "/" << p.travelDate.month << "/" << p.travelDate.year
-         << "\",\"status\":\"" << p.status << "\",\"concession\":\"" << p.concession
-         << "\",\"farePaid\":" << fixed << setprecision(2) << p.farePaid << "}";
-    return json.str();
-}
-
-void handleHttpClient(SOCKET clientSocket, RailwaySystem& sys, sqlite3* db) {
-    char buffer[8192];
-    int bytesReceived = recv(clientSocket, buffer, sizeof(buffer) - 1, 0);
-    if (bytesReceived <= 0) return;
-
-    string request(buffer, bytesReceived);
-    size_t headerEnd = request.find("\r\n\r\n");
-    while (headerEnd == string::npos) {
-        int more = recv(clientSocket, buffer, sizeof(buffer) - 1, 0);
-        if (more <= 0) break;
-        request.append(buffer, more);
-        headerEnd = request.find("\r\n\r\n");
-    }
-
-    size_t clPos = request.find("Content-Length:");
-    if (clPos == string::npos) clPos = request.find("content-length:");
-    if (clPos != string::npos && headerEnd != string::npos) {
-        size_t valStart = clPos + 15;
-        while (valStart < request.length() && (request[valStart] == ' ' || request[valStart] == '\t')) valStart++;
-        size_t valEnd = request.find("\r\n", valStart);
-        if (valEnd != string::npos) {
-            int contentLength = atoi(request.substr(valStart, valEnd - valStart).c_str());
-            size_t currentBodyLen = request.length() - (headerEnd + 4);
-            while ((int)currentBodyLen < contentLength) {
-                int more = recv(clientSocket, buffer, sizeof(buffer) - 1, 0);
-                if (more <= 0) break;
-                request.append(buffer, more);
-                currentBodyLen += more;
-            }
-        }
-    }
-
-    istringstream reqStream(request);
-    string method, path, protocol;
-    reqStream >> method >> path >> protocol;
-
-    if (path == "/" || path == "/index.html") {
-        ifstream htmlFile("web/index.html");
-        string body;
-        if (htmlFile.is_open()) {
-            stringstream ss;
-            ss << htmlFile.rdbuf();
-            body = ss.str();
-            htmlFile.close();
-        } else {
-            body = "<html><body><h2>Railway Reservation System Backend Online</h2></body></html>";
-        }
-        sendHttpResponse(clientSocket, "text/html; charset=utf-8", body);
-    } else if (path == "/api/trains") {
-        lock_guard<mutex> lock(g_sysMutex);
-        stringstream json;
-        json << "[";
-        for (size_t i = 0; i < sys.trains.size(); i++) {
-            const Train& t = sys.trains[i];
-            json << "{\"trainNo\":" << t.trainNo << ",\"name\":\"" << t.name << "\",\"source\":\"" << t.source
-                 << "\",\"destination\":\"" << t.destination << "\",\"departure\":\"" << t.departure
-                 << "\",\"totalSeats\":" << t.totalSeats << ",\"availableSeats\":" << t.availableSeats
-                 << ",\"fare\":" << fixed << setprecision(2) << t.fare << "}";
-            if (i + 1 < sys.trains.size()) json << ",";
-        }
-        json << "]";
-        sendHttpResponse(clientSocket, "application/json", json.str());
-    } else if (path.find("/api/seats") == 0) {
-        int tNo = atoi(getQueryParam(path, "trainNo").c_str());
-        lock_guard<mutex> lock(g_sysMutex);
-        int tIdx = findTrainIndex(sys, tNo);
-        if (tIdx != -1) {
-            stringstream json;
-            json << "{\"trainNo\":" << tNo << ",\"totalSeats\":" << sys.trains[tIdx].totalSeats
-                 << ",\"availableSeats\":" << sys.trains[tIdx].availableSeats << ",\"seats\":[";
-            for (int s = 0; s < sys.trains[tIdx].totalSeats; s++) {
-                json << sys.seatMap[tIdx][s];
-                if (s + 1 < sys.trains[tIdx].totalSeats) json << ",";
-            }
-            json << "]}";
-            sendHttpResponse(clientSocket, "application/json", json.str());
-        } else {
-            sendHttpResponse(clientSocket, "application/json", "{\"error\":\"Train not found\"}");
-        }
-    } else if (path.find("/api/pnr") == 0) {
-        int pnr = atoi(getQueryParam(path, "pnr").c_str());
-        lock_guard<mutex> lock(g_sysMutex);
-        int pIdx = findPassengerByPNR(sys, pnr);
-        if (pIdx != -1) {
-            sendHttpResponse(clientSocket, "application/json", "{\"found\":true," + passengerToJson(sys.passengers[pIdx]).substr(1));
-        } else {
-            sendHttpResponse(clientSocket, "application/json", "{\"found\":false}");
-        }
-    } else if (path == "/api/stats") {
-        lock_guard<mutex> lock(g_sysMutex);
-        SystemStats s = calculateStats(sys);
-        stringstream json;
-        json << "{\"totalTrains\":" << s.totalTrains << ",\"totalBookings\":" << s.totalBookings
-             << ",\"confirmedBookings\":" << s.confirmedBookings << ",\"cancelledBookings\":" << s.cancelledBookings
-             << ",\"totalWaitlisted\":" << s.totalWaitlisted << ",\"totalRevenue\":" << fixed << setprecision(2) << s.totalRevenue << "}";
-        sendHttpResponse(clientSocket, "application/json", json.str());
-    } else if (path == "/api/manifest") {
-        lock_guard<mutex> lock(g_sysMutex);
-        stringstream json;
-        json << "[";
-        for (size_t i = 0; i < sys.passengers.size(); i++) {
-            json << passengerToJson(sys.passengers[i]);
-            if (i + 1 < sys.passengers.size()) json << ",";
-        }
-        json << "]";
-        sendHttpResponse(clientSocket, "application/json", json.str());
-    } else if (path.find("/api/ticket") == 0) {
-        int pnr = atoi(getQueryParam(path, "pnr").c_str());
-        string fileName = "ticket_" + to_string(pnr) + ".txt";
-        ifstream tFile(fileName.c_str());
-        string body = "Ticket receipt file not found.";
-        if (tFile.is_open()) {
-            stringstream ss;
-            ss << tFile.rdbuf();
-            body = ss.str();
-            tFile.close();
-        }
-        sendHttpResponse(clientSocket, "text/plain; charset=utf-8", body);
-    } else if (method == "POST" && path == "/api/book") {
-        size_t bodyPos = request.find("\r\n\r\n");
-        string body = (bodyPos != string::npos) ? request.substr(bodyPos + 4) : "";
-
-        int trainNo = atoi(extractJsonField(body, "trainNo").c_str());
-        string name = extractJsonField(body, "name");
-        int age = atoi(extractJsonField(body, "age").c_str());
-        string gStr = extractJsonField(body, "gender");
-        char gender = (!gStr.empty()) ? gStr[0] : 'M';
-        string dateStr = extractJsonField(body, "dateStr");
-        int seatNo = atoi(extractJsonField(body, "seatNo").c_str());
-
-        Date travelDate = {15, 10, 2026};
-        if (dateStr.length() >= 10) {
-            travelDate.year = atoi(dateStr.substr(0, 4).c_str());
-            travelDate.month = atoi(dateStr.substr(5, 2).c_str());
-            travelDate.day = atoi(dateStr.substr(8, 2).c_str());
-        }
-
-        lock_guard<mutex> lock(g_sysMutex);
-        int trainIdx = findTrainIndex(sys, trainNo);
-        if (trainIdx == -1) {
-            sendHttpResponse(clientSocket, "application/json", "{\"success\":false,\"error\":\"Train does not exist\"}");
-        } else {
-            int freeSeat = findFreeSeat(sys, trainIdx);
-            if (freeSeat != -1 && sys.trains[trainIdx].availableSeats > 0) {
-                int allocated = (seatNo >= 1 && seatNo <= sys.trains[trainIdx].totalSeats && sys.seatMap[trainIdx][seatNo - 1] == 0) ? seatNo : freeSeat;
-                string concessionTier;
-                float finalFare = 0.0f;
-                calculateConcession(age, sys.trains[trainIdx].fare, concessionTier, finalFare);
-
-                Passenger p;
-                p.pnr = generatePNR(sys);
-                p.name = name;
-                p.age = age;
-                p.gender = gender;
-                p.trainNo = trainNo;
-                p.seatNo = allocated;
-                p.travelDate = travelDate;
-                p.status = "CONFIRMED";
-                p.concession = concessionTier;
-                p.farePaid = finalFare;
-
-                beginTransaction(db);
-                sys.seatMap[trainIdx][allocated - 1] = 1;
-                sys.trains[trainIdx].availableSeats--;
-                updateTrainSeats(db, trainNo, sys.trains[trainIdx].availableSeats);
-                insertPassenger(db, p);
-                commitTransaction(db);
-
-                sys.passengers.push_back(p);
-                exportTicketToFile(p, sys.trains[trainIdx]);
-
-                stringstream json;
-                json << "{\"success\":true,\"status\":\"CONFIRMED\",\"pnr\":" << p.pnr
-                     << ",\"name\":\"" << p.name << "\",\"age\":" << p.age << ",\"seatNo\":" << p.seatNo
-                     << ",\"concession\":\"" << p.concession << "\",\"farePaid\":" << fixed << setprecision(2) << p.farePaid << "}";
-                sendHttpResponse(clientSocket, "application/json", json.str());
-            } else {
-                queue<WaitingEntry>& wQueue = sys.waitingLists[trainNo];
-                if ((int)wQueue.size() >= MAX_WAITING) {
-                    sendHttpResponse(clientSocket, "application/json", "{\"success\":false,\"error\":\"Train and Waiting List are both FULL.\"}");
-                } else {
-                    WaitingEntry w;
-                    w.name = name;
-                    w.age = age;
-                    w.gender = gender;
-                    w.trainNo = trainNo;
-                    w.travelDate = travelDate;
-
-                    insertWaiting(db, w);
-                    wQueue.push(w);
-
-                    stringstream json;
-                    json << "{\"success\":true,\"status\":\"WAITING\",\"waitPos\":" << wQueue.size()
-                         << ",\"name\":\"" << w.name << "\"}";
-                    sendHttpResponse(clientSocket, "application/json", json.str());
-                }
-            }
-        }
-    } else if (method == "POST" && path == "/api/cancel") {
-        size_t bodyPos = request.find("\r\n\r\n");
-        string body = (bodyPos != string::npos) ? request.substr(bodyPos + 4) : "";
-        int pnr = atoi(extractJsonField(body, "pnr").c_str());
-
-        lock_guard<mutex> lock(g_sysMutex);
-        int pIdx = findPassengerByPNR(sys, pnr);
-
-        if (pIdx == -1) {
-            sendHttpResponse(clientSocket, "application/json", "{\"success\":false,\"error\":\"Ticket PNR not found\"}");
-        } else if (sys.passengers[pIdx].status == "CANCELLED") {
-            sendHttpResponse(clientSocket, "application/json", "{\"success\":false,\"error\":\"Ticket is already cancelled\"}");
-        } else {
-            Passenger& p = sys.passengers[pIdx];
-            int trainIdx = findTrainIndex(sys, p.trainNo);
-            int freedSeat = p.seatNo;
-
-            beginTransaction(db);
-            p.status = "CANCELLED";
-            updatePassengerStatus(db, pnr, "CANCELLED");
-
-            if (trainIdx != -1) {
-                if (freedSeat >= 1 && freedSeat <= sys.trains[trainIdx].totalSeats) {
-                    sys.seatMap[trainIdx][freedSeat - 1] = 0;
-                }
-                sys.trains[trainIdx].availableSeats++;
-                updateTrainSeats(db, p.trainNo, sys.trains[trainIdx].availableSeats);
-            }
-            commitTransaction(db);
-
-            sys.recentCancellations.push(p);
-
-            if (trainIdx != -1) promoteFromWaitingList(sys, db, trainIdx, freedSeat);
-            sendHttpResponse(clientSocket, "application/json", "{\"success\":true,\"message\":\"Ticket cancelled successfully.\"}");
-        }
-    } else {
-        sendHttpResponse(clientSocket, "application/json", "{\"error\":\"Endpoint not found\"}", 404);
-    }
-}
-
-void runHttpServer(RailwaySystem* sysPtr, sqlite3* dbPtr, int port) {
-#ifdef _WIN32
-    WSADATA wsaData;
-    if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0) return;
-#endif
-
-    SOCKET serverSocket = socket(AF_INET, SOCK_STREAM, 0);
-    if (serverSocket == INVALID_SOCKET) {
-#ifdef _WIN32
-        WSACleanup();
-#endif
-        return;
-    }
-
-    int opt = 1;
-    setsockopt(serverSocket, SOL_SOCKET, SO_REUSEADDR, (const char*)&opt, sizeof(opt));
-
-    sockaddr_in serverAddr;
-    serverAddr.sin_family = AF_INET;
-    serverAddr.sin_addr.s_addr = INADDR_ANY;
-    serverAddr.sin_port = htons((u_short)port);
-
-    if (bind(serverSocket, (sockaddr*)&serverAddr, sizeof(serverAddr)) == SOCKET_ERROR) {
-        CLOSE_SOCKET(serverSocket);
-#ifdef _WIN32
-        WSACleanup();
-#endif
-        return;
-    }
-
-    if (listen(serverSocket, 10) == SOCKET_ERROR) {
-        CLOSE_SOCKET(serverSocket);
-#ifdef _WIN32
-        WSACleanup();
-#endif
-        return;
-    }
-
-    while (true) {
-        sockaddr_in clientAddr;
-        socklen_t clientLen = sizeof(clientAddr);
-        SOCKET clientSocket = accept(serverSocket, (sockaddr*)&clientAddr, &clientLen);
-        if (clientSocket != INVALID_SOCKET) {
-            handleHttpClient(clientSocket, *sysPtr, dbPtr);
-        }
-    }
-
-    CLOSE_SOCKET(serverSocket);
-#ifdef _WIN32
-    WSACleanup();
-#endif
-}
-
-void displayPortalSelectionMenu() {
-    cout << "\n=======================================================\n"
-         << "           RAILWAY TICKET RESERVATION SYSTEM           \n"
-         << "=======================================================\n"
-         << "  1. Passenger Portal (Book, Cancel, Status, E-Ticket)\n"
-         << "  2. Administrator Portal (PIN Protected: Fleet, Stats)\n"
-         << "  3. Launch Modern Web Dashboard (http://localhost:8080)\n"
-         << "  0. Exit Application\n"
-         << "=======================================================\n";
-}
-
-void displayPassengerMenu() {
-    cout << "\n-------------------------------------------------------\n"
-         << "                   PASSENGER PORTAL                    \n"
-         << "-------------------------------------------------------\n"
-         << "  1. View Train Schedules & Fares\n"
-         << "  2. Search Train (By Number or Destination)\n"
-         << "  3. Check Available Seats & Coach Layout\n"
-         << "  4. Book a Ticket (Manual Seat & Concession)\n"
-         << "  5. Cancel Confirmed Ticket (by PNR)\n"
-         << "  6. Cancel Waiting List Entry\n"
-         << "  7. View PNR Status\n"
-         << "  8. Sort Trains (Bubble Sort by Fare/Name)\n"
-         << "  9. Undo Last Cancellation (Stack LIFO)\n"
-         << "  0. Return to Main Portal Menu\n"
-         << "-------------------------------------------------------\n";
-}
-
-void displayAdminMenu() {
-    cout << "\n-------------------------------------------------------\n"
-         << "              ADMINISTRATOR MANAGEMENT PORTAL          \n"
-         << "-------------------------------------------------------\n"
-         << "  1. Add New Train to Fleet\n"
-         << "  2. View Passenger Manifest (All Bookings)\n"
-         << "  3. View Coach Seat Grid for Train\n"
-         << "  4. View Waiting List Queue for Train\n"
-         << "  5. View Executive System Analytics (Revenue & Bookings)\n"
-         << "  0. Return to Main Portal Menu\n"
-         << "-------------------------------------------------------\n";
-}
-
-void runPassengerPortal(RailwaySystem& sys, sqlite3* db) {
-    int choice = -1;
-    do {
-        displayPassengerMenu();
-        choice = readInt("Select an option (0 - 9): ", 0, 9);
-        switch (choice) {
-            case 1: displayTrains(sys); break;
-            case 2: {
-                cout << "\n1. Search by Train Number (Binary Search)\n2. Search by Destination (Linear Search)\n";
-                int sChoice = readInt("Choice (1 or 2): ", 1, 2);
-                if (sChoice == 1) searchTrain(sys);
-                else searchTrainByDestination(sys);
-                break;
-            }
-            case 3: {
-                int tNo = readInt("\nEnter Train Number: ", 1000, 99999);
-                int idx = findTrainIndex(sys, tNo);
-                if (idx != -1) displaySeatMap(sys, idx);
-                else cout << "Train #" << tNo << " not found.\n";
-                break;
-            }
-            case 4: bookTicket(sys, db); break;
-            case 5: cancelTicket(sys, db); break;
-            case 6: cancelWaitingListEntry(sys, db); break;
-            case 7: checkPNRStatus(sys); break;
-            case 8: sortTrains(sys); break;
-            case 9: undoLastCancellation(sys, db); break;
-            case 0: cout << "\nReturning to Portal Selector...\n"; break;
-        }
-    } while (choice != 0);
-}
-
-void runAdminPortal(RailwaySystem& sys, sqlite3* db) {
-    cout << "\n[Security Authentication Required]\n";
-    string pin = readNonEmptyString("Enter Administrator PIN: ");
-
-    const char* envPin = getenv("ADMIN_PIN");
-    string requiredPin = (envPin != NULL && string(envPin).length() > 0) ? string(envPin) : "admin123";
-
-    if (pin != requiredPin) {
-        cout << "[Access Denied] Incorrect administrator PIN!\n";
-        return;
-    }
-
-    cout << "[Access Granted] Welcome, Administrator.\n";
-    int aChoice = -1;
-    do {
-        displayAdminMenu();
-        aChoice = readInt("Select an option (0 - 5): ", 0, 5);
-        switch (aChoice) {
-            case 1: addTrain(sys, db); break;
-            case 2: displayManifest(sys); break;
-            case 3: {
-                int tNo = readInt("\nEnter Train Number: ", 1000, 99999);
-                int idx = findTrainIndex(sys, tNo);
-                if (idx != -1) displaySeatMap(sys, idx);
-                else cout << "Train #" << tNo << " not found.\n";
-                break;
-            }
-            case 4: {
-                int tNo = readInt("\nEnter Train Number: ", 1000, 99999);
-                lock_guard<mutex> lock(g_sysMutex);
-                if (sys.waitingLists.find(tNo) == sys.waitingLists.end() || sys.waitingLists[tNo].empty()) {
-                    cout << "Waiting queue is empty for Train #" << tNo << ".\n";
-                } else {
-                    queue<WaitingEntry> copyQ = sys.waitingLists[tNo];
-                    cout << "\nWaiting List Queue for Train #" << tNo << " (FIFO Order):\n";
-                    int pos = 1;
-                    while (!copyQ.empty()) {
-                        WaitingEntry w = copyQ.front();
-                        copyQ.pop();
-                        cout << "  " << pos++ << ". " << w.name << " (" << w.age << " yrs, " << w.gender << ")\n";
-                    }
-                }
-                break;
-            }
-            case 5: displaySystemStats(sys); break;
-            case 0: cout << "\nReturning to Portal Selector...\n"; break;
-        }
-    } while (aChoice != 0);
-}
-
-int main(int argc, char* argv[]) {
-    if (argc > 1) {
-        string arg = argv[1];
-        if (arg == "--version" || arg == "-v") {
-            cout << "Railway Ticket Reservation System v2.0.0 (C++11/SQLite3/Winsock)\n";
-            cout << "High-Performance In-Memory Data Structures & Embedded REST Architecture\n";
-            return 0;
-        }
-        if (arg == "--help" || arg == "-h") {
-            cout << "Usage: railway.exe [OPTIONS]\n"
-                 << "  --version, -v   Display software version information\n"
-                 << "  --help, -h      Display command-line help flags\n";
-            return 0;
-        }
-    }
-
-    cout << "\n=======================================================\n"
-         << " >>> Starting Railway Ticket Reservation System v2 <<< \n"
-         << "=======================================================\n";
-
+int main() {
     sqlite3* db = NULL;
     if (!openDatabase(db, "railway.db")) {
-        cout << "[Fatal Error] Unable to connect to railway.db. Exiting.\n";
+        cout << "Unable to connect to database.\n";
         return 1;
     }
 
     if (!createTables(db)) {
-        cout << "[Fatal Error] Unable to initialize database tables. Exiting.\n";
+        cout << "Unable to initialize tables.\n";
         closeDatabase(db);
         return 1;
     }
@@ -1391,32 +798,47 @@ int main(int argc, char* argv[]) {
         buildSeatMap(sys);
     }
 
-    thread serverThread(runHttpServer, &sys, db, 8080);
-    serverThread.detach();
-
-    cout << "[System Online] Winsock HTTP Server running on http://localhost:8080\n";
-    cout << "[System Ready] " << sys.trains.size() << " trains loaded into memory.\n";
-
-    int portalChoice = -1;
+    int choice = -1;
     do {
-        displayPortalSelectionMenu();
-        portalChoice = readInt("Select Portal (0 - 3): ", 0, 3);
-        switch (portalChoice) {
-            case 1: runPassengerPortal(sys, db); break;
-            case 2: runAdminPortal(sys, db); break;
-            case 3:
-                cout << "\nOpening web dashboard at http://localhost:8080 ...\n";
-#ifdef _WIN32
-                system("start http://localhost:8080");
-#elif __APPLE__
-                system("open http://localhost:8080");
-#else
-                system("xdg-open http://localhost:8080");
-#endif
+        cout << "\n=======================================================\n"
+             << "           RAILWAY TICKET RESERVATION SYSTEM           \n"
+             << "=======================================================\n"
+             << "  1. View Train Schedules & Fares\n"
+             << "  2. Search Train by Train Number (Binary Search)\n"
+             << "  3. Search Train by Destination (Linear Search)\n"
+             << "  4. Check Available Seats & Coach Seat Layout (2D Array)\n"
+             << "  5. Book a Ticket (Seat Allocation & Concession)\n"
+             << "  6. Cancel Confirmed Ticket (Auto-Promotes Waiting List)\n"
+             << "  7. Cancel Waiting List Entry\n"
+             << "  8. Undo Last Cancellation (Stack LIFO)\n"
+             << "  9. View PNR Status & Print E-Ticket Slip\n"
+             << " 10. Sort Trains for Display (Bubble Sort)\n"
+             << " 11. Add New Train to Fleet (Admin)\n"
+             << "  0. Exit Application\n"
+             << "=======================================================\n";
+
+        choice = readInt("Select an option (0 - 11): ", 0, 11);
+        switch (choice) {
+            case 1: displayTrains(sys); break;
+            case 2: searchTrain(sys); break;
+            case 3: searchTrainByDestination(sys); break;
+            case 4: {
+                int tNo = readInt("Enter Train Number: ", 1000, 99999);
+                int idx = findTrainIndex(sys, tNo);
+                if (idx != -1) displaySeatMap(sys, idx);
+                else cout << "Train #" << tNo << " not found.\n";
                 break;
+            }
+            case 5: bookTicket(sys, db); break;
+            case 6: cancelTicket(sys, db); break;
+            case 7: cancelWaitingListEntry(sys, db); break;
+            case 8: undoLastCancellation(sys, db); break;
+            case 9: checkPNRStatus(sys); break;
+            case 10: sortTrains(sys); break;
+            case 11: addTrain(sys, db); break;
             case 0: cout << "\nThank you for using the Railway Reservation System. Goodbye!\n"; break;
         }
-    } while (portalChoice != 0);
+    } while (choice != 0);
 
     closeDatabase(db);
     return 0;

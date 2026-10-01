@@ -133,11 +133,19 @@ Data is stored as document collections inside the `mongodb_data/` directory:
 ]
 ```
 
-### 3. Loading Into Live MongoDB (`mongosh`)
-Run Option 13 in the console menu (or close the app) to automatically generate **`mongo_seed.js`**. You can load this into any MongoDB instance using the MongoDB Shell:
+### 3. Synchronizing to MongoDB Atlas (`datadb`)
+The system targets your MongoDB Atlas cluster (`cluster0.xhjfpv2.mongodb.net`) and database **`datadb`**.
+
+To push all collections directly to MongoDB Atlas:
+1. Select **Option 13** (*Sync Collections to MongoDB Atlas*) from the interactive menu, OR
+2. Double-click **`sync_to_atlas.bat`**, OR
+3. Run via MongoDB Shell:
 ```bash
-mongosh railway_reservation mongo_seed.js
+mongosh "mongodb+srv://<username>:<password>@cluster0.xhjfpv2.mongodb.net/datadb?appName=Cluster0" mongo_seed.js
 ```
+
+> [!TIP]
+> If connecting to MongoDB Atlas, ensure your IP address is allowed in the MongoDB Atlas dashboard under **Network Access** $\to$ **Add IP Address** (or select **Allow Access from Anywhere** `0.0.0.0/0`).
 
 ---
 

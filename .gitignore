@@ -1,42 +1,28 @@
-# Build Artifacts & Binaries
+# Executables and Binaries
 *.exe
 *.o
 *.obj
 *.out
-*.dll
-*.so
-*.dylib
+*.app
 
-# SQLite Database & Cache Files
-*.db
-*.sqlite
-*.sqlite3
-*.db-journal
-*.db-wal
-*.db-shm
+# Build outputs
+build/
+backend/build/
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+Makefile
 
-# Local Toolchains & Environments
-w64devkit/
+# Environment and sensitive keys
 .env
-mongodb.conf
-*.conf
+.env.local
 
-# Editor & IDE Directories
+# IDE & OS files
 .vscode/
-.vs/
 .idea/
-*.suo
-*.user
+.DS_Store
+Thumbs.db
 
-# Test Output & User Generated Ticket Files
-test_output.txt
-ticket_*.txt
-
-# Private Study & Viva Explanation Guides (Hidden from GitHub)
-study_guide/
-notes/
-*EXPLANATION*
-*STUDY*
-*VIVA*
-*COMPLEXITY*
-
+# Logs and scratch files
+*.log
+scratch/

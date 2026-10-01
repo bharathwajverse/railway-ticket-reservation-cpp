@@ -1,0 +1,8 @@
+build/
+backend/build/
+.git
+.gitignore
+node_modules
+.env
+*.exe
+*.o

@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Railway Ticket Reservation System v2</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%230284c7'><path d='M12 2c-4 0-8 .5-8 4v9.5C4 17.43 5.57 19 7.5 19L6 20.5v.5h12v-.5L16.5 19c1.93 0 3.5-1.57 3.5-3.5V6c0-3.5-4-4-8-4zM7.5 17c-.83 0-1.5-.67-1.5-1.5S6.67 14 7.5 14s1.5.67 1.5 1.5S8.33 17 7.5 17zm9 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm1.5-6H6V7h12v4z'/></svg>">
+</head>
+<body>
+
+  <!-- Top App Bar -->
+  <header class="app-header">
+    <div class="header-container">
+      <div class="logo-group">
+        <svg viewBox="0 0 24 24">
+          <path d="M12 2c-4 0-8 .5-8 4v9.5C4 17.43 5.57 19 7.5 19L6 20.5v.5h12v-.5L16.5 19c1.93 0 3.5-1.57 3.5-3.5V6c0-3.5-4-4-8-4zM7.5 17c-.83 0-1.5-.67-1.5-1.5S6.67 14 7.5 14s1.5.67 1.5 1.5S8.33 17 7.5 17zm9 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm1.5-6H6V7h12v4z"/>
+        </svg>
+        <div>
+          <h1 class="logo-title">RailReserve Pro</h1>
+          <p class="logo-subtitle">MongoDB NoSQL Edition • C++ Backend</p>
+        </div>
+      </div>
+      <button id="theme-toggle" class="theme-toggle-btn" aria-label="Toggle light and dark theme">
+        <svg id="theme-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="5"></circle>
+          <line x1="12" y1="1" x2="12" y2="3"></line>
+          <line x1="12" y1="21" x2="12" y2="23"></line>
+          <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+          <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+          <line x1="1" y1="12" x2="3" y2="12"></line>
+          <line x1="21" y1="12" x2="23" y2="12"></line>
+          <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+          <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- Navigation Tabs -->
+  <nav class="nav-tabs" aria-label="Main application tabs">
+    <div class="tabs-container">
+      <button class="tab-btn active" data-tab="trains">
+        <svg viewBox="0 0 24 24"><path d="M12 2c-4 0-8 .5-8 4v9.5C4 17.43 5.57 19 7.5 19L6 20.5v.5h12v-.5L16.5 19c1.93 0 3.5-1.57 3.5-3.5V6c0-3.5-4-4-8-4zM7.5 17c-.83 0-1.5-.67-1.5-1.5S6.67 14 7.5 14s1.5.67 1.5 1.5S8.33 17 7.5 17zm9 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm1.5-6H6V7h12v4z"/></svg>
+        Trains
+      </button>
+      <button class="tab-btn" data-tab="book">
+        <svg viewBox="0 0 24 24"><path d="M22 10V6c0-1.11-.9-2-2-2H4c-1.1 0-1.99.89-1.99 2v4c1.1 0 1.99.9 1.99 2s-.89 2-2 2v4c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2v-4c-1.1 0-2-.9-2-2s.9-2 2-2zm-2-1.5c-1.25.78-2 2.17-2 3.5s.75 2.72 2 3.5V18H4v-2.5c1.25-.78 2-2.17 2-3.5s-.75-2.72-2-3.5V6h16v2.5z"/></svg>
+        Book Ticket
+      </button>
+      <button class="tab-btn" data-tab="my-booking">
+        <svg viewBox="0 0 24 24"><path d="M19 3h-4.18C14.4 1.84 13.3 1 12 1c-1.3 0-2.4.84-2.82 2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 0c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm2 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg>
+        My Booking
+      </button>
+      <button class="tab-btn" data-tab="waiting">
+        <svg viewBox="0 0 24 24"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"/></svg>
+        Waiting List
+      </button>
+      <button class="tab-btn" data-tab="passengers">
+        <svg viewBox="0 0 24 24"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 3s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
+        Passengers
+      </button>
+      <button class="tab-btn" data-tab="admin">
+        <svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+        Admin (Add Train)
+      </button>
+    </div>
+  </nav>
+
+  <!-- Main Content Container -->
+  <main class="main-container">
+
+    <!-- TAB 1: TRAINS DIRECTORY -->
+    <section id="trains-section" class="tab-content active">
+      <div class="section-header">
+        <h2 class="section-title">Train Schedules & Live Availability</h2>
+        <div class="controls-row">
+          <input type="text" id="train-search-input" class="search-input" placeholder="Search destination or number...">
+          <select id="train-sort-select" class="select-input" aria-label="Sort trains">
+            <option value="">Default Order (Train No)</option>
+            <option value="fare">Sort by Fare (Ascending)</option>
+            <option value="name">Sort by Name (A-Z)</option>
+          </select>
+          <button id="refresh-trains-btn" class="btn btn-secondary" title="Refresh">↻ Refresh</button>
+        </div>
+      </div>
+      <div id="trains-grid" class="trains-grid">
+        <!-- Rendered dynamically -->
+      </div>
+    </section>
+
+    <!-- TAB 2: BOOK TICKET -->
+    <section id="book-section" class="tab-content">
+      <div class="form-card">
+        <h2 class="section-title" style="margin-bottom: 1.5rem; text-align: center;">Book a Train Ticket</h2>
+        <form id="booking-form">
+          <div class="form-group">
+            <label for="book-train-select" class="form-label">Select Train</label>
+            <select id="book-train-select" class="select-input" required>
+              <option value="">-- Choose a Train --</option>
+            </select>
+          </div>
+
+          <!-- Dynamic 2D Seat Map Preview -->
+          <div id="seat-map-preview" class="seat-map-container" style="display: none;">
+            <div id="seat-map-title" class="seat-map-title">Coach Seat Map</div>
+            <div class="seat-legend">
+              <div class="legend-item"><div class="legend-box" style="background: var(--seat-avail);"></div> Available</div>
+              <div class="legend-item"><div class="legend-box" style="background: var(--seat-booked);"></div> Booked</div>
+            </div>
+            <div id="seat-grid" class="seat-grid"></div>
+          </div>
+
+          <div class="form-group">
+            <label for="book-passenger-name" class="form-label">Passenger Full Name</label>
+            <input type="text" id="book-passenger-name" class="form-input" placeholder="e.g. John Doe" required>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="book-passenger-age" class="form-label">Age</label>
+              <input type="number" id="book-passenger-age" class="form-input" min="1" max="120" placeholder="e.g. 28" required>
+            </div>
+            <div class="form-group">
+              <label for="book-passenger-gender" class="form-label">Gender</label>
+              <select id="book-passenger-gender" class="select-input" required>
+                <option value="M">Male</option>
+                <option value="F">Female</option>
+                <option value="O">Other</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="book-travel-date" class="form-label">Travel Date</label>
+            <input type="date" id="book-travel-date" class="form-input" required>
+          </div>
+
+          <button type="submit" id="submit-booking-btn" class="btn btn-primary" style="width: 100%; margin-top: 1rem;">
+            Confirm Booking
+          </button>
+        </form>
+
+        <!-- Ticket Receipt View after Booking -->
+        <div id="ticket-receipt-container" style="display: none;"></div>
+      </div>
+    </section>
+
+    <!-- TAB 3: MY BOOKING (PNR LOOKUP & CANCELLATION) -->
+    <section id="my-booking-section" class="tab-content">
+      <div class="form-card" style="margin-bottom: 2rem;">
+        <h2 class="section-title" style="text-align: center; margin-bottom: 1.5rem;">Check PNR Status & Cancel Ticket</h2>
+        <div style="display: flex; gap: 0.75rem;">
+          <input type="number" id="pnr-search-input" class="form-input" placeholder="Enter PNR number (e.g. 1001)" style="flex: 1;" required>
+          <button id="search-pnr-btn" class="btn btn-primary">Search PNR</button>
+        </div>
+      </div>
+      <div id="pnr-result-container"></div>
+    </section>
+
+    <!-- TAB 4: WAITING LIST -->
+    <section id="waiting-section" class="tab-content">
+      <div class="section-header">
+        <h2 class="section-title">Live Waiting Queues (FIFO)</h2>
+        <button id="refresh-waiting-btn" class="btn btn-secondary">↻ Refresh Queues</button>
+      </div>
+      <div id="waiting-list-container">
+        <!-- Rendered dynamically -->
+      </div>
+    </section>
+
+    <!-- TAB 5: PASSENGERS MANIFEST -->
+    <section id="passengers-section" class="tab-content">
+      <div class="section-header">
+        <h2 class="section-title">Passenger Manifest</h2>
+        <div class="controls-row">
+          <input type="number" id="passenger-filter-train" class="search-input" placeholder="Filter by Train No...">
+          <button id="filter-passengers-btn" class="btn btn-primary">Filter</button>
+          <button id="reset-passengers-btn" class="btn btn-secondary">Show All</button>
+        </div>
+      </div>
+      <div class="table-container">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>PNR</th>
+              <th>Passenger Name</th>
+              <th>Age/Gender</th>
+              <th>Train No</th>
+              <th>Seat No</th>
+              <th>Travel Date</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="passengers-table-body">
+            <!-- Rendered dynamically -->
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- TAB 6: ADMIN (ADD TRAIN) -->
+    <section id="admin-section" class="tab-content">
+      <div class="form-card">
+        <h2 class="section-title" style="text-align: center; margin-bottom: 1.5rem;">Add New Train to Fleet</h2>
+        <form id="add-train-form">
+          <div class="form-group">
+            <label for="admin-train-no" class="form-label">Train Number (5 digits)</label>
+            <input type="number" id="admin-train-no" class="form-input" min="10000" max="99999" placeholder="e.g. 10505" required>
+          </div>
+          <div class="form-group">
+            <label for="admin-train-name" class="form-label">Train Name</label>
+            <input type="text" id="admin-train-name" class="form-input" placeholder="e.g. Duronto Express" required>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="admin-train-source" class="form-label">Source Station</label>
+              <input type="text" id="admin-train-source" class="form-input" placeholder="e.g. Mumbai" required>
+            </div>
+            <div class="form-group">
+              <label for="admin-train-destination" class="form-label">Destination Station</label>
+              <input type="text" id="admin-train-destination" class="form-input" placeholder="e.g. Delhi" required>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="admin-train-departure" class="form-label">Departure Time</label>
+              <input type="text" id="admin-train-departure" class="form-input" placeholder="e.g. 08:30 AM" required>
+            </div>
+            <div class="form-group">
+              <label for="admin-train-seats" class="form-label">Total Seats (1 - 60)</label>
+              <input type="number" id="admin-train-seats" class="form-input" min="1" max="60" value="4" required>
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="admin-train-fare" class="form-label">Fare (Rs.)</label>
+            <input type="number" step="0.01" id="admin-train-fare" class="form-input" min="1" placeholder="e.g. 1250.00" required>
+          </div>
+          <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 1rem;">Add Train</button>
+        </form>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Cancellation Confirmation Dialog -->
+  <dialog id="cancel-dialog" style="padding: 1.5rem; border-radius: var(--radius-md); border: 1px solid var(--border-color); background: var(--bg-surface); color: var(--text-main); max-width: 400px; margin: auto;">
+    <h3 style="margin-bottom: 0.75rem;">Confirm Cancellation</h3>
+    <p id="cancel-dialog-text" style="color: var(--text-muted); margin-bottom: 1.25rem;">Are you sure you want to cancel this ticket?</p>
+    <div style="display: flex; justify-content: flex-end; gap: 0.75rem;">
+      <button id="cancel-dialog-no" class="btn btn-secondary">Keep Ticket</button>
+      <button id="cancel-dialog-yes" class="btn btn-danger">Yes, Cancel</button>
+    </div>
+  </dialog>
+
+  <!-- Toast Container -->
+  <div id="toast-container" class="toast-container" aria-live="polite"></div>
+
+  <!-- Client Application Script -->
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>

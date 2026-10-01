@@ -373,12 +373,12 @@ void DSAManager::rebuildSeatMap() {
     }
 }
 
-void DSAManager::loadFromDatabase(sqlite3* db) {
-    dbLoadTrains(db, trains);
-    dbLoadPassengers(db, passengers);
+void DSAManager::loadFromDatabase() {
+    dbLoadTrains(trains);
+    dbLoadPassengers(passengers);
 
     vector<WaitingEntry> dbWaiting;
-    dbLoadWaiting(db, dbWaiting);
+    dbLoadWaiting(dbWaiting);
 
     waitingLists.clear();
     for (size_t i = 0; i < dbWaiting.size(); i++) {
@@ -392,7 +392,7 @@ void DSAManager::loadFromDatabase(sqlite3* db) {
     }
 
     rebuildSeatMap();
-    auditLog.push_back("[Init] System state loaded from SQLite database.");
+    auditLog.push_back("[Init] System state loaded from MongoDB document collections.");
 }
 
 bool DSAManager::exportTicketToFile(const Passenger& p, const Train& t) const {
@@ -503,7 +503,7 @@ void DSAManager::displayCoachLayout() const {
     }
 }
 
-void DSAManager::bookTicket(sqlite3* db) {
+void DSAManager::bookTicket() {
     int tNo = readInt("Enter Train Number to Book: ", 1000, 99999);
     int trainIdx = findTrainIndex(tNo);
     if (trainIdx == -1) {
@@ -575,8 +575,8 @@ void DSAManager::bookTicket(sqlite3* db) {
         t.availableSeats--;
         passengers.push_back(p);
 
-        dbInsertPassenger(db, p);
-        dbUpdateTrainSeats(db, t.trainNo, t.availableSeats);
+        dbInsertPassenger(p);
+        dbUpdateTrainSeats(t.trainNo, t.availableSeats);
         exportTicketToFile(p, t);
 
         cout << "\n" << string(55, '=') << "\n"
@@ -606,7 +606,7 @@ void DSAManager::bookTicket(sqlite3* db) {
         w.trainNo = t.trainNo;
         w.travelDate = d;
 
-        dbInsertWaiting(db, w);
+        dbInsertWaiting(w);
         waitingLists[t.trainNo].enqueue(w);
 
         cout << "\n" << string(55, '=') << "\n"
@@ -621,7 +621,7 @@ void DSAManager::bookTicket(sqlite3* db) {
     }
 }
 
-void DSAManager::cancelTicket(sqlite3* db) {
+void DSAManager::cancelTicket() {
     int pnr = readInt("Enter PNR to cancel: ", 1000, 999999);
     int pIdx = findPassengerIndex(pnr);
 
@@ -645,7 +645,7 @@ void DSAManager::cancelTicket(sqlite3* db) {
     Train& t = trains[trainIdx];
     seatMap[trainIdx][p.seatNo - 1] = 0;
     p.status = "CANCELLED";
-    dbUpdatePassengerStatus(db, p.pnr, "CANCELLED");
+    dbUpdatePassengerStatus(p.pnr, "CANCELLED");
 
     // Module VIII: Push onto LIFO Stack for Undo
     recentCancellations.push(p);
@@ -656,7 +656,7 @@ void DSAManager::cancelTicket(sqlite3* db) {
     if (!waitingLists[t.trainNo].isEmpty()) {
         WaitingEntry promoted;
         waitingLists[t.trainNo].dequeue(promoted);
-        dbDeleteWaiting(db, promoted.waitId);
+        dbDeleteWaiting(promoted.waitId);
 
         string conc;
         float fare;
@@ -676,25 +676,25 @@ void DSAManager::cancelTicket(sqlite3* db) {
 
         seatMap[trainIdx][p.seatNo - 1] = 1;
         passengers.push_back(newP);
-        dbInsertPassenger(db, newP);
+        dbInsertPassenger(newP);
         exportTicketToFile(newP, t);
 
         cout << ">>> FIFO Auto-Promotion: Waitlist passenger '" << promoted.name
              << "' promoted to Coach C1, Seat #" << p.seatNo << "! (New PNR: " << newP.pnr << ")\n";
     } else {
         t.availableSeats++;
-        dbUpdateTrainSeats(db, t.trainNo, t.availableSeats);
+        dbUpdateTrainSeats(t.trainNo, t.availableSeats);
     }
 }
 
-void DSAManager::cancelWaitingEntry(sqlite3* db) {
+void DSAManager::cancelWaitingEntry() {
     int waitId = readInt("Enter Waitlist ID (numeric): ", 1, 999999);
     bool found = false;
 
     for (map<int, ArrayQueue>::iterator it = waitingLists.begin(); it != waitingLists.end(); ++it) {
         WaitingEntry removed;
         if (it->second.removeById(waitId, removed)) {
-            dbDeleteWaiting(db, waitId);
+            dbDeleteWaiting(waitId);
             cout << "\n[Removed] Waitlist entry WL-" << waitId << " for passenger '" << removed.name
                  << "' on Train #" << it->first << " successfully removed.\n";
             found = true;
@@ -704,7 +704,7 @@ void DSAManager::cancelWaitingEntry(sqlite3* db) {
     if (!found) cout << "Waitlist entry WL-" << waitId << " not found in active queues.\n";
 }
 
-void DSAManager::undoLastCancellation(sqlite3* db) {
+void DSAManager::undoLastCancellation() {
     if (recentCancellations.isEmpty()) {
         cout << "\nNo recent cancellations available to undo (Stack is empty).\n";
         return;
@@ -732,8 +732,8 @@ void DSAManager::undoLastCancellation(sqlite3* db) {
         seatMap[trainIdx][last.seatNo - 1] = 1;
         trains[trainIdx].availableSeats--;
 
-        dbUpdatePassengerStatus(db, last.pnr, "CONFIRMED");
-        dbUpdateTrainSeats(db, last.trainNo, trains[trainIdx].availableSeats);
+        dbUpdatePassengerStatus(last.pnr, "CONFIRMED");
+        dbUpdateTrainSeats(last.trainNo, trains[trainIdx].availableSeats);
         exportTicketToFile(passengers[pIdx], trains[trainIdx]);
 
         cout << "\n" << string(55, '=') << "\n"
@@ -797,7 +797,7 @@ void DSAManager::sortTrainsMenu() {
     cout << string(70, '=') << "\n";
 }
 
-void DSAManager::addTrain(sqlite3* db) {
+void DSAManager::addTrain() {
     if ((int)trains.size() >= MAX_TRAINS) {
         cout << "Cannot add more trains. Maximum capacity (" << MAX_TRAINS << ") reached.\n";
         return;
@@ -820,12 +820,12 @@ void DSAManager::addTrain(sqlite3* db) {
     string dummy;
     getline(cin, dummy);
 
-    dbInsertTrain(db, t);
+    dbInsertTrain(t);
     insertTrainSorted(trains, t);
     uniqueStations.insert(t.source);
     uniqueStations.insert(t.destination);
 
-    cout << "\n[Added] Train #" << t.trainNo << " (" << t.name << ") registered successfully.\n";
+    cout << "\n[Added] Train #" << t.trainNo << " (" << t.name << ") registered successfully in MongoDB collection.\n";
 }
 
 void DSAManager::displayUniqueStations() const {
@@ -848,4 +848,19 @@ void DSAManager::displayUniqueStations() const {
         cout << "\n";
     }
     cout << string(60, '=') << "\n";
+}
+
+void DSAManager::exportMongoScript() const {
+    if (dbExportMongoScript("mongo_seed.js")) {
+        cout << "\n" << string(65, '=') << "\n"
+             << "     MONGODB SEED SCRIPT GENERATED (mongo_seed.js)     \n"
+             << string(65, '=') << "\n"
+             << "  File Location   : ./mongo_seed.js\n"
+             << "  Target Database : railway_reservation\n"
+             << "  Collections     : trains, passengers, waiting_list\n"
+             << "  Run in mongosh  : mongosh railway_reservation mongo_seed.js\n"
+             << string(65, '=') << "\n";
+    } else {
+        cout << "\n[Error] Failed to generate MongoDB script.\n";
+    }
 }

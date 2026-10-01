@@ -11,7 +11,6 @@
 #include <deque>
 #include <utility>
 
-struct sqlite3;
 
 // ============================================================================
 // MODULE I: INTRODUCTION TO C++ PROGRAMMING
@@ -168,7 +167,7 @@ public:
     DSAManager();
 
     // Data Synchronization
-    void loadFromDatabase(sqlite3* db);
+    void loadFromDatabase();
     void rebuildSeatMap();
     int getTrainCount() const;
 
@@ -183,14 +182,15 @@ public:
     void searchTrainByNumber() const;
     void searchTrainByDestination() const;
     void displayCoachLayout() const;
-    void bookTicket(sqlite3* db);
-    void cancelTicket(sqlite3* db);
-    void cancelWaitingEntry(sqlite3* db);
-    void undoLastCancellation(sqlite3* db);
+    void bookTicket();
+    void cancelTicket();
+    void cancelWaitingEntry();
+    void undoLastCancellation();
     void checkPNRStatus() const;
     void sortTrainsMenu();
-    void addTrain(sqlite3* db);
+    void addTrain();
     void displayUniqueStations() const;
+    void exportMongoScript() const;
 
     // STL Pair demonstration
     std::pair<int, std::string> getTrainSummary(int trainNo) const;

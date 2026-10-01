@@ -3,31 +3,34 @@
 
 #include <string>
 #include <vector>
-#include "sqlite3.h"
 #include "dsa_manager.h"
 
 // ============================================================================
-// SEPARATE DATABASE LAYER (SQLite 3 Persistence)
-// Completely isolated database lifecycle, tables, prepared statements, and CRUD
+// SEPARATE MONGODB DOCUMENT DATABASE LAYER (NoSQL Persistence)
+// Document-oriented collections (trains, passengers, waiting_list) in JSON
+// with automatic mongosh shell script generation (mongo_seed.js)
 // ============================================================================
 
-bool dbOpen(sqlite3*& db, const char* fileName);
-void dbClose(sqlite3* db);
-bool dbCreateTables(sqlite3* db);
+bool dbOpen(const std::string& dataDirectory = "mongodb_data");
+void dbClose();
+bool dbCreateCollections();
 
-// Train Operations
-bool dbInsertTrain(sqlite3* db, const Train& t);
-bool dbUpdateTrainSeats(sqlite3* db, int trainNo, int availableSeats);
-bool dbLoadTrains(sqlite3* db, std::vector<Train>& trains);
+// Train Document Collection Operations
+bool dbInsertTrain(const Train& t);
+bool dbUpdateTrainSeats(int trainNo, int availableSeats);
+bool dbLoadTrains(std::vector<Train>& trains);
 
-// Passenger Operations
-bool dbInsertPassenger(sqlite3* db, const Passenger& p);
-bool dbUpdatePassengerStatus(sqlite3* db, int pnr, const std::string& status);
-bool dbLoadPassengers(sqlite3* db, std::vector<Passenger>& passengers);
+// Passenger Document Collection Operations
+bool dbInsertPassenger(const Passenger& p);
+bool dbUpdatePassengerStatus(int pnr, const std::string& status);
+bool dbLoadPassengers(std::vector<Passenger>& passengers);
 
-// Waiting List Operations
-bool dbInsertWaiting(sqlite3* db, WaitingEntry& w);
-bool dbDeleteWaiting(sqlite3* db, int waitId);
-bool dbLoadWaiting(sqlite3* db, std::vector<WaitingEntry>& waitingList);
+// Waiting List Document Collection Operations
+bool dbInsertWaiting(WaitingEntry& w);
+bool dbDeleteWaiting(int waitId);
+bool dbLoadWaiting(std::vector<WaitingEntry>& waitingList);
+
+// MongoDB Shell Script Generation (mongosh compatible)
+bool dbExportMongoScript(const std::string& scriptFileName = "mongo_seed.js");
 
 #endif // DATABASE_H

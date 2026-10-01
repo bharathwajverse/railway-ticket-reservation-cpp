@@ -1,0 +1,46 @@
+[
+  {
+    "_id": "6701a1b2c3d4e5f600000001",
+    "train_no": 10101,
+    "name": "Rajdhani Express",
+    "source": "Delhi",
+    "destination": "Mumbai",
+    "departure": "06:00 AM",
+    "total_seats": 4,
+    "available_seats": 3,
+    "fare": 1500.00
+  },
+  {
+    "_id": "6701a1b2c3d4e5f600000002",
+    "train_no": 10202,
+    "name": "Vande Bharat",
+    "source": "Chennai",
+    "destination": "Bangalore",
+    "departure": "05:50 AM",
+    "total_seats": 5,
+    "available_seats": 5,
+    "fare": 950.00
+  },
+  {
+    "_id": "6701a1b2c3d4e5f600000003",
+    "train_no": 10303,
+    "name": "Shatabdi Express",
+    "source": "Kolkata",
+    "destination": "Patna",
+    "departure": "02:15 PM",
+    "total_seats": 3,
+    "available_seats": 3,
+    "fare": 750.00
+  },
+  {
+    "_id": "6701a1b2c3d4e5f600000004",
+    "train_no": 10404,
+    "name": "Tejas Express",
+    "source": "Ahmedabad",
+    "destination": "Mumbai",
+    "departure": "06:40 AM",
+    "total_seats": 4,
+    "available_seats": 4,
+    "fare": 1100.00
+  }
+]

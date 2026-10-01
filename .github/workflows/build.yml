@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Build railway_cli
         run: |
@@ -44,7 +44,7 @@ jobs:
         shell: msys2 {0}
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Setup MSYS2 & GCC
         uses: msys2/setup-msys2@v2
@@ -79,7 +79,7 @@ jobs:
     runs-on: macos-latest
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Build railway_cli
         run: |

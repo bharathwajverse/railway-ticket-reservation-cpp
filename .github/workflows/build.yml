@@ -23,17 +23,35 @@ jobs:
   build-windows:
     name: Build on Windows
     runs-on: windows-latest
+    defaults:
+      run:
+        shell: msys2 {0}
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Setup MinGW
-        uses: egor-tensin/setup-mingw@v2
+      - name: Setup MSYS2 & GCC
+        uses: msys2/setup-msys2@v2
         with:
-          platform: x64
+          msystem: UCRT64
+          update: false
+          install: mingw-w64-ucrt-x86_64-gcc
 
       - name: Compile Application
         run: g++ -std=c++11 -Wall -Wextra -Iinclude src/main.cpp src/dsa_manager.cpp src/database.cpp -o railway.exe
 
       - name: Test Run
-        run: echo 0 | .\railway.exe
+        run: echo "0" | ./railway.exe
+
+  build-macos:
+    name: Build on macOS
+    runs-on: macos-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Compile Application
+        run: clang++ -std=c++11 -Wall -Wextra -Iinclude src/main.cpp src/dsa_manager.cpp src/database.cpp -o railway
+
+      - name: Test Run
+        run: echo "0" | ./railway

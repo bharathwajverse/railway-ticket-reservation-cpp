@@ -49,11 +49,17 @@ static string getJsonSubObject(const string& doc, const string& key) {
     size_t braceStart = doc.find('{', pos);
     if (braceStart == string::npos) return "";
     int depth = 0;
+    bool inStr = false;
     for (size_t i = braceStart; i < doc.length(); i++) {
-        if (doc[i] == '{') depth++;
-        else if (doc[i] == '}') {
-            depth--;
-            if (depth == 0) return doc.substr(braceStart, i - braceStart + 1);
+        char c = doc[i];
+        if (c == '\"' && (i == 0 || doc[i - 1] != '\\')) {
+            inStr = !inStr;
+        } else if (!inStr) {
+            if (c == '{') depth++;
+            else if (c == '}') {
+                depth--;
+                if (depth == 0) return doc.substr(braceStart, i - braceStart + 1);
+            }
         }
     }
     return "";
@@ -63,14 +69,20 @@ static vector<string> extractDocBlocks(const string& jsonContent) {
     vector<string> blocks;
     int depth = 0;
     size_t start = 0;
+    bool inStr = false;
     for (size_t i = 0; i < jsonContent.length(); i++) {
-        if (jsonContent[i] == '{') {
-            if (depth == 0) start = i;
-            depth++;
-        } else if (jsonContent[i] == '}') {
-            depth--;
-            if (depth == 0 && start <= i) {
-                blocks.push_back(jsonContent.substr(start, i - start + 1));
+        char c = jsonContent[i];
+        if (c == '\"' && (i == 0 || jsonContent[i - 1] != '\\')) {
+            inStr = !inStr;
+        } else if (!inStr) {
+            if (c == '{') {
+                if (depth == 0) start = i;
+                depth++;
+            } else if (c == '}') {
+                depth--;
+                if (depth == 0 && start <= i) {
+                    blocks.push_back(jsonContent.substr(start, i - start + 1));
+                }
             }
         }
     }

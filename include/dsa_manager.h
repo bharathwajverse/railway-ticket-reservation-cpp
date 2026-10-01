@@ -73,6 +73,7 @@ bool isLeapYear(int y);
 bool isValidDate(int d, int m, int y);
 void calculateConcession(int age, float baseFare, std::string& concession, float& finalFare);
 int readInt(const std::string& prompt, int minVal, int maxVal);
+float readFloat(const std::string& prompt, float minVal, float maxVal);
 std::string readNonEmptyString(const std::string& prompt);
 Date readDate(const std::string& prompt);
 
@@ -110,6 +111,7 @@ int binarySearchTrain(const std::vector<Train>& trains, int trainNo);
 std::vector<int> linearSearchByDestination(const std::vector<Train>& trains, const std::string& dest);
 void bubbleSortTrainsByFare(std::vector<Train>& trains);
 void bubbleSortTrainsByName(std::vector<Train>& trains);
+void bubbleSortTrainsByNumber(std::vector<Train>& trains);
 void insertTrainSorted(std::vector<Train>& trains, const Train& t);
 
 // ============================================================================

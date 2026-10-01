@@ -48,6 +48,7 @@ int readInt(const string& prompt, int minVal, int maxVal) {
             if (val >= minVal && val <= maxVal) return val;
             cout << "Input out of range (" << minVal << " - " << maxVal << ").\n";
         } else {
+            if (cin.eof()) return minVal;
             cin.clear();
             string bad;
             cin >> bad;
@@ -56,14 +57,34 @@ int readInt(const string& prompt, int minVal, int maxVal) {
     }
 }
 
+float readFloat(const string& prompt, float minVal, float maxVal) {
+    float val;
+    while (true) {
+        cout << prompt;
+        if (cin >> val) {
+            string dummy;
+            getline(cin, dummy);
+            if (val >= minVal && val <= maxVal) return val;
+            cout << "Input out of range (" << minVal << " - " << maxVal << ").\n";
+        } else {
+            if (cin.eof()) return minVal;
+            cin.clear();
+            string bad;
+            cin >> bad;
+            cout << "Invalid input. Please enter a valid number.\n";
+        }
+    }
+}
+
 string readNonEmptyString(const string& prompt) {
     string val;
     while (true) {
         cout << prompt;
-        getline(cin, val);
+        if (!getline(cin, val)) return "";
         size_t start = val.find_first_not_of(" \t\r\n");
         size_t end = val.find_last_not_of(" \t\r\n");
         if (start != string::npos && end != string::npos) return val.substr(start, end - start + 1);
+        if (cin.eof()) return "";
         cout << "Input cannot be empty.\n";
     }
 }
@@ -232,6 +253,19 @@ void bubbleSortTrainsByName(vector<Train>& trains) {
     }
 }
 
+void bubbleSortTrainsByNumber(vector<Train>& trains) {
+    int n = (int)trains.size();
+    for (int i = 0; i < n - 1; i++) {
+        for (int j = 0; j < n - i - 1; j++) {
+            if (trains[j].trainNo > trains[j + 1].trainNo) {
+                Train temp = trains[j];
+                trains[j] = trains[j + 1];
+                trains[j + 1] = temp;
+            }
+        }
+    }
+}
+
 void insertTrainSorted(vector<Train>& trains, const Train& t) {
     size_t i = 0;
     while (i < trains.size() && trains[i].trainNo < t.trainNo) i++;
@@ -375,6 +409,7 @@ void DSAManager::rebuildSeatMap() {
 
 void DSAManager::loadFromDatabase() {
     dbLoadTrains(trains);
+    bubbleSortTrainsByNumber(trains);
     dbLoadPassengers(passengers);
 
     vector<WaitingEntry> dbWaiting;
@@ -425,8 +460,8 @@ bool DSAManager::exportTicketToFile(const Passenger& p, const Train& t) const {
     fout << "----------------------------------------------------------------------\n";
     fout << "BASE FARE         : Rs. " << fixed << setprecision(2) << t.fare << "\n";
     fout << "DISCOUNT          : Rs. " << fixed << setprecision(2) << discount << "\n";
-    fout << "TOTAL FARE PAID   : Rs. " << fixed << setprecision(2) << p.farePaid << "\n";
-    fout << "VERIFICATION HASH : " << reverseString(to_string(p.pnr) + t.name.substr(0, 3)) << "\n";
+    string trainPrefix = (t.name.length() >= 3) ? t.name.substr(0, 3) : t.name;
+    fout << "VERIFICATION HASH : " << reverseString(to_string(p.pnr) + trainPrefix) << "\n";
     fout << "======================================================================\n";
     fout.close();
     return true;
@@ -815,10 +850,7 @@ void DSAManager::addTrain() {
     t.departure = readNonEmptyString("Departure Time (e.g. 06:30 AM): ");
     t.totalSeats = readInt("Total Seats (1 - 60): ", 1, MAX_SEATS);
     t.availableSeats = t.totalSeats;
-    cout << "Base Fare (Rs): ";
-    cin >> t.fare;
-    string dummy;
-    getline(cin, dummy);
+    t.fare = readFloat("Base Fare (Rs 50 - 20000): ", 50.0f, 20000.0f);
 
     dbInsertTrain(t);
     insertTrainSorted(trains, t);

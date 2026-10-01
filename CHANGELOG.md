@@ -3,6 +3,18 @@
 All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.5.1] - 2026-10-01
+### Fixed
+- Fixed GitHub Actions Windows CI by migrating from broken `egor-tensin/setup-mingw` to official `msys2/setup-msys2` with UCRT64 GCC toolchain.
+- Added macOS CI job (`build-macos`) using Clang++ for true cross-platform verification (Ubuntu, Windows, macOS).
+- Fixed potential infinite loop in `readInt()` and `readNonEmptyString()` when encountering stream EOF on piped or automated input.
+- Added validated `readFloat()` function to prevent invalid numeric inputs during train fare registration.
+- Added `bubbleSortTrainsByNumber()` to guarantee trains are sorted by train number upon database loading, ensuring $O(\log N)$ Binary Search always succeeds.
+- Hardened JSON document block parsing in `database.cpp` against string literals containing curly braces.
+- Guarded ticket verification hash generation in `exportTicketToFile()` against train names shorter than 3 characters.
+
+---
+
 ## [2.5.0] - 2026-10-01
 ### Changed
 - Reorganized codebase into professional directories: `include/` (headers), `src/` (implementation), and `scripts/` (Atlas sync utility).

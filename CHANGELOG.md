@@ -9,6 +9,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Removed obsolete SQLite amalgamation files (`sqlite3.c`, `sqlite3.h`, `sqlite3.o`, `railway.db`) and local ticket receipt dumps.
 - Updated compiler include paths (`-Iinclude`) in `build.bat`, `Makefile`, and GitHub Actions CI workflow.
 - Added root launcher `sync_to_atlas.bat` delegating to `scripts/sync_to_atlas.bat`.
+- Fixed Windows `cmd.exe` command quote encapsulation in `dbSyncToAtlas` for direct, seamless sync from Option 13.
 - Updated repository documentation (`README.md`) directory tree.
 
 ---

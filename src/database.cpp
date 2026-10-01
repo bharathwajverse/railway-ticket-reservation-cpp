@@ -510,9 +510,14 @@ bool dbSyncToAtlas() {
 
     string uri = dbGetAtlasUri();
     string cmd = mongoshCmd + " \"" + uri + "\" mongo_seed.js";
+#ifdef _WIN32
+    string fullCmd = "\"" + cmd + "\"";
+#else
+    string fullCmd = cmd;
+#endif
     cout << "\n[MongoDB Atlas Sync] Connecting to cluster: cluster0.xhjfpv2.mongodb.net (database: "
          << dbGetDatabaseName() << ")...\n";
-    int ret = system(cmd.c_str());
+    int ret = system(fullCmd.c_str());
     return (ret == 0);
 }
 

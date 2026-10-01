@@ -51,11 +51,12 @@ int main() {
              << " 10. Sort Trains for Display (Bubble Sort)\n"
              << " 11. Add New Train to Fleet (Admin)\n"
              << " 12. View Unique Stations & Route Tokens (STL Set & Strings)\n"
-             << " 13. Export MongoDB Shell Script (mongo_seed.js for mongosh)\n"
+             << " 13. Sync Collections to MongoDB Atlas (datadb)\n"
+             << " 14. Export MongoDB Shell Script (mongo_seed.js for mongosh)\n"
              << "  0. Exit Application\n"
              << "=======================================================\n";
 
-        choice = readInt("Select an option (0 - 13): ", 0, 13);
+        choice = readInt("Select an option (0 - 14): ", 0, 14);
         switch (choice) {
             case 1: manager.displayTrains(); break;
             case 2: manager.searchTrainByNumber(); break;
@@ -69,7 +70,8 @@ int main() {
             case 10: manager.sortTrainsMenu(); break;
             case 11: manager.addTrain(); break;
             case 12: manager.displayUniqueStations(); break;
-            case 13: manager.exportMongoScript(); break;
+            case 13: manager.syncWithAtlas(); break;
+            case 14: manager.exportMongoScript(); break;
             case 0: cout << "\nThank you for using the Railway Reservation System. Goodbye!\n"; break;
         }
     } while (choice != 0);

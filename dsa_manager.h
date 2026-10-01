@@ -191,6 +191,7 @@ public:
     void addTrain();
     void displayUniqueStations() const;
     void exportMongoScript() const;
+    void syncWithAtlas() const;
 
     // STL Pair demonstration
     std::pair<int, std::string> getTrainSummary(int trainNo) const;

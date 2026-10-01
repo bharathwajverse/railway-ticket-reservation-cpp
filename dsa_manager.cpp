@@ -856,11 +856,24 @@ void DSAManager::exportMongoScript() const {
              << "     MONGODB SEED SCRIPT GENERATED (mongo_seed.js)     \n"
              << string(65, '=') << "\n"
              << "  File Location   : ./mongo_seed.js\n"
-             << "  Target Database : railway_reservation\n"
+             << "  Target Database : " << dbGetDatabaseName() << "\n"
              << "  Collections     : trains, passengers, waiting_list\n"
-             << "  Run in mongosh  : mongosh railway_reservation mongo_seed.js\n"
+             << "  Run in mongosh  : mongosh \"" << dbGetAtlasUri() << "\" mongo_seed.js\n"
              << string(65, '=') << "\n";
     } else {
         cout << "\n[Error] Failed to generate MongoDB script.\n";
     }
 }
+
+void DSAManager::syncWithAtlas() const {
+    if (dbSyncToAtlas()) {
+        cout << "\n[Success] Collections successfully pushed to MongoDB Atlas (datadb)!\n";
+    } else {
+        cout << "\n[Notice] Could not complete direct connection to Atlas.\n"
+             << "Please make sure your IP is whitelisted on MongoDB Atlas:\n"
+             << "1. Go to cloud.mongodb.com -> Network Access\n"
+             << "2. Add IP Address -> 'Allow Access from Anywhere' (0.0.0.0/0)\n"
+             << "Or run: sync_to_atlas.bat\n";
+    }
+}
+

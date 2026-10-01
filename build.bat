@@ -9,22 +9,11 @@ if errorlevel 1 (
 )
 
 echo ========================================================
-echo  Compiling Railway Ticket Reservation System
+echo  Compiling Railway Ticket Reservation System (MongoDB)
 echo ========================================================
 
-if not exist "%~dp0sqlite3.o" (
-    echo [1/2] Compiling sqlite3.c to sqlite3.o
-    gcc -O2 -c "%~dp0sqlite3.c" -o "%~dp0sqlite3.o"
-    if errorlevel 1 (
-        echo [ERROR] Failed to compile sqlite3.c
-        exit /b 1
-    )
-) else (
-    echo [1/2] Using existing sqlite3.o
-)
-
-echo [2/2] Compiling main.cpp, dsa_manager.cpp, and database.cpp with g++
-g++ -std=c++11 -Wall -Wextra "%~dp0main.cpp" "%~dp0dsa_manager.cpp" "%~dp0database.cpp" "%~dp0sqlite3.o" -o "%~dp0railway.exe"
+echo Compiling main.cpp, dsa_manager.cpp, and database.cpp with g++
+g++ -std=c++11 -Wall -Wextra "%~dp0main.cpp" "%~dp0dsa_manager.cpp" "%~dp0database.cpp" -o "%~dp0railway.exe"
 if errorlevel 1 (
     echo [ERROR] Build failed!
     exit /b 1

@@ -14,11 +14,8 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Compile SQLite Amalgamation
-        run: gcc -O2 -c sqlite3.c -o sqlite3.o
-
       - name: Build Application
-        run: g++ -std=c++11 -Wall -Wextra main.cpp dsa_manager.cpp database.cpp sqlite3.o -o railway -lpthread -ldl
+        run: g++ -std=c++11 -Wall -Wextra main.cpp dsa_manager.cpp database.cpp -o railway
 
       - name: Test Execution
         run: echo "0" | ./railway
@@ -36,9 +33,7 @@ jobs:
           platform: x64
 
       - name: Compile Application
-        run: |
-          gcc -O2 -c sqlite3.c -o sqlite3.o
-          g++ -std=c++11 -Wall -Wextra main.cpp dsa_manager.cpp database.cpp sqlite3.o -o railway.exe
+        run: g++ -std=c++11 -Wall -Wextra main.cpp dsa_manager.cpp database.cpp -o railway.exe
 
       - name: Test Run
         run: echo 0 | .\railway.exe

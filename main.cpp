@@ -10,20 +10,15 @@ using namespace std;
 // ============================================================================
 
 int main() {
-    sqlite3* db = NULL;
-    if (!dbOpen(db, "railway.db")) {
-        cout << "Error: Unable to connect to database 'railway.db'.\n";
+    if (!dbOpen("mongodb_data")) {
+        cout << "Error: Unable to open MongoDB document data directory 'mongodb_data'.\n";
         return 1;
     }
 
-    if (!dbCreateTables(db)) {
-        cout << "Error: Unable to initialize SQLite tables.\n";
-        dbClose(db);
-        return 1;
-    }
+    dbCreateCollections();
 
     DSAManager manager;
-    manager.loadFromDatabase(db);
+    manager.loadFromDatabase();
 
     // Seed default trains if empty
     if (manager.getTrainCount() == 0) {
@@ -31,17 +26,18 @@ int main() {
         Train t2 = {10202, "Vande Bharat", "Chennai", "Bangalore", "05:50 AM", 5, 5, 950.0f};
         Train t3 = {10303, "Shatabdi Express", "Kolkata", "Patna", "02:15 PM", 3, 3, 750.0f};
         Train t4 = {10404, "Tejas Express", "Ahmedabad", "Mumbai", "06:40 AM", 4, 4, 1100.0f};
-        dbInsertTrain(db, t1);
-        dbInsertTrain(db, t2);
-        dbInsertTrain(db, t3);
-        dbInsertTrain(db, t4);
-        manager.loadFromDatabase(db);
+        dbInsertTrain(t1);
+        dbInsertTrain(t2);
+        dbInsertTrain(t3);
+        dbInsertTrain(t4);
+        manager.loadFromDatabase();
     }
 
     int choice = -1;
     do {
         cout << "\n=======================================================\n"
              << "           RAILWAY TICKET RESERVATION SYSTEM           \n"
+             << "               (MongoDB Document Edition)              \n"
              << "=======================================================\n"
              << "  1. View Train Schedules & Fares\n"
              << "  2. Search Train by Train Number (Binary Search)\n"
@@ -55,27 +51,29 @@ int main() {
              << " 10. Sort Trains for Display (Bubble Sort)\n"
              << " 11. Add New Train to Fleet (Admin)\n"
              << " 12. View Unique Stations & Route Tokens (STL Set & Strings)\n"
+             << " 13. Export MongoDB Shell Script (mongo_seed.js for mongosh)\n"
              << "  0. Exit Application\n"
              << "=======================================================\n";
 
-        choice = readInt("Select an option (0 - 12): ", 0, 12);
+        choice = readInt("Select an option (0 - 13): ", 0, 13);
         switch (choice) {
             case 1: manager.displayTrains(); break;
             case 2: manager.searchTrainByNumber(); break;
             case 3: manager.searchTrainByDestination(); break;
             case 4: manager.displayCoachLayout(); break;
-            case 5: manager.bookTicket(db); break;
-            case 6: manager.cancelTicket(db); break;
-            case 7: manager.cancelWaitingEntry(db); break;
-            case 8: manager.undoLastCancellation(db); break;
+            case 5: manager.bookTicket(); break;
+            case 6: manager.cancelTicket(); break;
+            case 7: manager.cancelWaitingEntry(); break;
+            case 8: manager.undoLastCancellation(); break;
             case 9: manager.checkPNRStatus(); break;
             case 10: manager.sortTrainsMenu(); break;
-            case 11: manager.addTrain(db); break;
+            case 11: manager.addTrain(); break;
             case 12: manager.displayUniqueStations(); break;
+            case 13: manager.exportMongoScript(); break;
             case 0: cout << "\nThank you for using the Railway Reservation System. Goodbye!\n"; break;
         }
     } while (choice != 0);
 
-    dbClose(db);
+    dbClose();
     return 0;
 }

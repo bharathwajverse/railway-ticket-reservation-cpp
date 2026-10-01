@@ -3,6 +3,19 @@
 All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.3.0] - 2026-10-01
+### Added
+- Transitioned persistence layer from SQLite to MongoDB Document NoSQL architecture.
+- Implemented document collections in `mongodb_data/`: `trains.json`, `passengers.json`, `waiting_list.json` with MongoDB ObjectIds (`_id`).
+- Implemented automated MongoDB Shell script generator (`mongo_seed.js`) fully compatible with `mongosh`.
+- Added Option 13 to console menu for on-demand MongoDB seed script export.
+
+### Changed
+- Decoupled and eliminated SQLite amalgamation source (`sqlite3.c`, `sqlite3.h`, `sqlite3.o`, `railway.db`) from build process.
+- Updated `build.bat`, `Makefile`, and CI workflows for fast, zero-dependency C++ compilation.
+
+---
+
 ## [2.2.0] - 2026-10-01
 ### Added
 - Created `database.h` and `database.cpp` to separate the entire SQLite 3 persistence layer.

@@ -12,8 +12,8 @@ echo ========================================================
 echo  Compiling Railway Ticket Reservation System (MongoDB)
 echo ========================================================
 
-echo Compiling src/main.cpp, src/dsa_manager.cpp, and src/database.cpp with g++
-g++ -std=c++11 -Wall -Wextra -I"%~dp0include" "%~dp0src\main.cpp" "%~dp0src\dsa_manager.cpp" "%~dp0src\database.cpp" -o "%~dp0railway.exe"
+echo Compiling app, DSA, and database modules with g++
+g++ -std=c++11 -Wall -Wextra -I"%~dp0DSA\include" -I"%~dp0database\include" "%~dp0app\main.cpp" "%~dp0DSA\src\dsa_manager.cpp" "%~dp0database\src\database.cpp" -o "%~dp0railway.exe"
 if errorlevel 1 (
     echo [ERROR] Build failed!
     exit /b 1

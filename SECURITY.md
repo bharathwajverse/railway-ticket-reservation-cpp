@@ -17,7 +17,7 @@ or emailing the repository owner directly.
 
 - The Administrator Portal is protected by a PIN-based authentication mechanism.
 - The embedded HTTP server (port 8080) is designed for **local development and demonstration only**.
-- MongoDB configuration files (`mongodb.conf`) containing credentials are excluded from version control via `.gitignore`.
+- MongoDB configuration files (`database/config/mongodb.conf`) containing credentials are excluded from version control via `.gitignore`.
 - Generated e-ticket files (`ticket_*.txt`) are excluded from version control.
 - MongoDB Atlas operations use secure connection strings (`mongodb+srv://`) with TLS enabled by default.
 

@@ -11,13 +11,23 @@ if exist "G:\mongosh-2.10.0-win32-x64\mongosh-2.10.0-win32-x64\bin\mongosh.exe" 
     set "MONGOSH_BIN=G:\mongosh-2.10.0-win32-x64\mongosh-2.10.0-win32-x64\bin\mongosh.exe"
 )
 
-if not exist "%~dp0..\mongo_seed.js" (
+if not exist "%~dp0mongo_seed.js" (
     echo [Info] Generating mongo_seed.js from application...
-    echo 13 | "%~dp0..\railway.exe" >nul
+    echo 14 | "%~dp0..\..\railway.exe" >nul
+)
+
+set "CONFIG_FILE=%~dp0..\config\mongodb.conf"
+if not exist "%CONFIG_FILE%" (
+    echo [ERROR] Missing database\config\mongodb.conf.
+    echo Copy mongodb.conf.example, then add your MongoDB URI.
+    exit /b 1
+)
+for /f "usebackq tokens=1,* delims==" %%A in ("%CONFIG_FILE%") do (
+    if "%%A"=="MONGODB_URI" set "MONGODB_URI=%%B"
 )
 
 echo [Info] Running mongosh to push collections into Atlas datadb...
-"%MONGOSH_BIN%" "mongodb+srv://system:system@cluster0.xhjfpv2.mongodb.net/datadb?appName=Cluster0" "%~dp0..\mongo_seed.js"
+"%MONGOSH_BIN%" "%MONGODB_URI%" "%~dp0mongo_seed.js"
 
 if errorlevel 1 (
     echo.

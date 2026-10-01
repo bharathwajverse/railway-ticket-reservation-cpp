@@ -2,7 +2,7 @@
 // MongoDB Atlas Initialization Script (mongosh compatible)
 // Database: datadb
 // Cluster:  cluster0.xhjfpv2.mongodb.net
-// Usage:    mongosh "mongodb+srv://system:system@cluster0.xhjfpv2.mongodb.net/datadb?appName=Cluster0" mongo_seed.js
+// Usage:    mongosh "<your MongoDB URI>" database/scripts/mongo_seed.js
 // =============================================================================
 
 use('datadb');

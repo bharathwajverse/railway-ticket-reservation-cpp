@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- Consolidated the 10-syllabus-module implementation and private study guide in `DSA/`.
+- Consolidated all MongoDB assets in `database/`, including JSON collections, configuration, scripts, headers, and implementation.
+- Removed the duplicate root Atlas launcher and generated executable from the project root.
+- Simplified build commands and updated documentation for the new layout.
+
 All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 

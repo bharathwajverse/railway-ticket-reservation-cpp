@@ -15,7 +15,7 @@
 
 using namespace std;
 
-static string g_dataDir = "mongodb_data";
+static string g_dataDir = "database/data";
 
 // Helper JSON parser utilities for MongoDB Documents
 static string getJsonValue(const string& doc, const string& key) {
@@ -395,7 +395,7 @@ bool dbDeleteWaiting(int waitId) {
 // ============================================================================
 
 string dbGetAtlasUri() {
-    ifstream fin("mongodb.conf");
+    ifstream fin("database/config/mongodb.conf");
     if (fin.is_open()) {
         string line;
         while (getline(fin, line)) {
@@ -405,11 +405,11 @@ string dbGetAtlasUri() {
         }
         fin.close();
     }
-    return "mongodb+srv://system:system@cluster0.xhjfpv2.mongodb.net/datadb?appName=Cluster0";
+    return "mongodb://localhost:27017/datadb";
 }
 
 string dbGetDatabaseName() {
-    ifstream fin("mongodb.conf");
+    ifstream fin("database/config/mongodb.conf");
     if (fin.is_open()) {
         string line;
         while (getline(fin, line)) {
@@ -431,14 +431,13 @@ bool dbExportMongoScript(const string& scriptFileName) {
     dbLoadWaiting(waiting);
 
     string dbName = dbGetDatabaseName();
-    string atlasUri = dbGetAtlasUri();
 
     stringstream ss;
     ss << "// =============================================================================\n"
        << "// MongoDB Atlas Initialization Script (mongosh compatible)\n"
        << "// Database: " << dbName << "\n"
        << "// Cluster:  cluster0.xhjfpv2.mongodb.net\n"
-       << "// Usage:    mongosh \"" << atlasUri << "\" " << scriptFileName << "\n"
+       << "// Usage:    mongosh \"<your MongoDB URI>\" " << scriptFileName << "\n"
        << "// =============================================================================\n\n"
        << "use('" << dbName << "');\n\n"
        << "// 1. Reset Collections\n"
@@ -511,7 +510,7 @@ bool dbExportMongoScript(const string& scriptFileName) {
 }
 
 bool dbSyncToAtlas() {
-    dbExportMongoScript("mongo_seed.js");
+    dbExportMongoScript("database/scripts/mongo_seed.js");
 
     string mongoshCmd = "mongosh";
     ifstream testMongosh("G:\\mongosh-2.10.0-win32-x64\\mongosh-2.10.0-win32-x64\\bin\\mongosh.exe");
@@ -521,7 +520,7 @@ bool dbSyncToAtlas() {
     }
 
     string uri = dbGetAtlasUri();
-    string cmd = mongoshCmd + " \"" + uri + "\" mongo_seed.js";
+    string cmd = mongoshCmd + " \"" + uri + "\" database/scripts/mongo_seed.js";
 #ifdef _WIN32
     string fullCmd = "\"" + cmd + "\"";
 #else

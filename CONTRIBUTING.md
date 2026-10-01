@@ -28,7 +28,7 @@ Please read and follow our [Code of Conduct](CODE_OF_CONDUCT.md) in all project 
    - Standard: C++11.
    - Paradigm: Procedural with `struct` and functions (no complex class hierarchies).
    - Only standard containers: `vector`, `queue`, `map`, `stack`, `string`, `set`.
-   - All persistence logic must remain encapsulated within the MongoDB database layer (`database.h` / `database.cpp`).
+   - All persistence logic must remain encapsulated within `database/` (`database/include/database.h` and `database/src/database.cpp`).
    - Code must compile with `-Wall -Wextra` without warnings.
 3. **Commit your changes:**
    ```bash

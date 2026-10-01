@@ -10,8 +10,8 @@ using namespace std;
 // ============================================================================
 
 int main() {
-    if (!dbOpen("mongodb_data")) {
-        cout << "Error: Unable to open MongoDB document data directory 'mongodb_data'.\n";
+    if (!dbOpen("database/data")) {
+        cout << "Error: Unable to open MongoDB document data directory 'database/data'.\n";
         return 1;
     }
 
@@ -52,7 +52,7 @@ int main() {
              << " 11. Add New Train to Fleet (Admin)\n"
              << " 12. View Unique Stations & Route Tokens (STL Set & Strings)\n"
              << " 13. Sync Collections to MongoDB Atlas (datadb)\n"
-             << " 14. Export MongoDB Shell Script (mongo_seed.js for mongosh)\n"
+             << " 14. Export MongoDB Shell Script (database/scripts/mongo_seed.js)\n"
              << "  0. Exit Application\n"
              << "=======================================================\n";
 

@@ -883,14 +883,14 @@ void DSAManager::displayUniqueStations() const {
 }
 
 void DSAManager::exportMongoScript() const {
-    if (dbExportMongoScript("mongo_seed.js")) {
+    if (dbExportMongoScript("database/scripts/mongo_seed.js")) {
         cout << "\n" << string(65, '=') << "\n"
-             << "     MONGODB SEED SCRIPT GENERATED (mongo_seed.js)     \n"
+             << " MONGODB SEED SCRIPT GENERATED (database/scripts/mongo_seed.js) \n"
              << string(65, '=') << "\n"
-             << "  File Location   : ./mongo_seed.js\n"
+             << "  File Location   : database/scripts/mongo_seed.js\n"
              << "  Target Database : " << dbGetDatabaseName() << "\n"
              << "  Collections     : trains, passengers, waiting_list\n"
-             << "  Run in mongosh  : mongosh \"" << dbGetAtlasUri() << "\" mongo_seed.js\n"
+             << "  Run in mongosh  : mongosh \"" << dbGetAtlasUri() << "\" database/scripts/mongo_seed.js\n"
              << string(65, '=') << "\n";
     } else {
         cout << "\n[Error] Failed to generate MongoDB script.\n";
@@ -905,7 +905,7 @@ void DSAManager::syncWithAtlas() const {
              << "Please make sure your IP is whitelisted on MongoDB Atlas:\n"
              << "1. Go to cloud.mongodb.com -> Network Access\n"
              << "2. Add IP Address -> 'Allow Access from Anywhere' (0.0.0.0/0)\n"
-             << "Or run: sync_to_atlas.bat\n";
+             << "Or run: database\\scripts\\sync_to_atlas.bat\n";
     }
 }
 

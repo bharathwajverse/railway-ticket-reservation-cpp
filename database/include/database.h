@@ -11,7 +11,7 @@
 // with automatic mongosh shell script generation (mongo_seed.js)
 // ============================================================================
 
-bool dbOpen(const std::string& dataDirectory = "mongodb_data");
+bool dbOpen(const std::string& dataDirectory = "database/data");
 void dbClose();
 bool dbCreateCollections();
 
@@ -31,7 +31,7 @@ bool dbDeleteWaiting(int waitId);
 bool dbLoadWaiting(std::vector<WaitingEntry>& waitingList);
 
 // MongoDB Shell Script Generation (mongosh compatible)
-bool dbExportMongoScript(const std::string& scriptFileName = "mongo_seed.js");
+bool dbExportMongoScript(const std::string& scriptFileName = "database/scripts/mongo_seed.js");
 
 // MongoDB Atlas Integration (Remote datadb Cluster)
 std::string dbGetAtlasUri();

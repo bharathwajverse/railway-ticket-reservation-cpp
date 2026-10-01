@@ -1,10 +1,10 @@
 # API Specifications & Module Interfaces
 
-This document outlines the programmatic C++ interface (`include/dsa_manager.h`, `include/database.h`) and data contracts for the **Railway Ticket Reservation System (MongoDB Edition)**.
+This document outlines the programmatic C++ interface (`DSA/include/dsa_manager.h`, `database/include/database.h`) and data contracts for the **Railway Ticket Reservation System (MongoDB Edition)**.
 
 ---
 
-## 1. C++ Engine API (`include/dsa_manager.h`)
+## 1. C++ Engine API (`DSA/include/dsa_manager.h`)
 
 The core business logic and algorithms are encapsulated within `DSAManager`:
 
@@ -31,13 +31,13 @@ public:
     void addNewTrain(const Train& train);
     void viewUniqueStations() const;                      // STL std::set
     void syncToMongoAtlas() const;                        // Atlas datadb push
-    void exportMongoScript() const;                       // mongo_seed.js export
+    void exportMongoScript() const;                       // database/scripts/mongo_seed.js export
 };
 ```
 
 ---
 
-## 2. Document Persistence API (`include/database.h`)
+## 2. Document Persistence API (`database/include/database.h`)
 
 The document layer isolates local JSON persistence and Atlas synchronization:
 

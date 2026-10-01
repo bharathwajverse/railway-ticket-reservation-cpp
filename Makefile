@@ -16,7 +16,7 @@ else
 endif
 
 # Source Files & Objects
-SRCS = main.cpp
+SRCS = main.cpp dsa_manager.cpp database.cpp
 OBJS = $(SRCS:.cpp=.o) sqlite3.o
 
 # Default target

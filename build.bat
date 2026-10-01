@@ -23,8 +23,8 @@ if not exist "%~dp0sqlite3.o" (
     echo [1/2] Using existing sqlite3.o
 )
 
-echo [2/2] Compiling main.cpp with g++
-g++ -std=c++11 -Wall -Wextra "%~dp0main.cpp" "%~dp0sqlite3.o" -o "%~dp0railway.exe"
+echo [2/2] Compiling main.cpp, dsa_manager.cpp, and database.cpp with g++
+g++ -std=c++11 -Wall -Wextra "%~dp0main.cpp" "%~dp0dsa_manager.cpp" "%~dp0database.cpp" "%~dp0sqlite3.o" -o "%~dp0railway.exe"
 if errorlevel 1 (
     echo [ERROR] Build failed!
     exit /b 1

@@ -18,7 +18,7 @@ jobs:
         run: gcc -O2 -c sqlite3.c -o sqlite3.o
 
       - name: Build Application
-        run: g++ -std=c++11 -Wall -Wextra main.cpp sqlite3.o -o railway -lpthread -ldl
+        run: g++ -std=c++11 -Wall -Wextra main.cpp dsa_manager.cpp database.cpp sqlite3.o -o railway -lpthread -ldl
 
       - name: Test Execution
         run: echo "0" | ./railway
@@ -38,7 +38,7 @@ jobs:
       - name: Compile Application
         run: |
           gcc -O2 -c sqlite3.c -o sqlite3.o
-          g++ -std=c++11 -Wall -Wextra main.cpp sqlite3.o -o railway.exe
+          g++ -std=c++11 -Wall -Wextra main.cpp dsa_manager.cpp database.cpp sqlite3.o -o railway.exe
 
       - name: Test Run
         run: echo 0 | .\railway.exe

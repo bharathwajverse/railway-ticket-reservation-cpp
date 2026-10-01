@@ -3,6 +3,21 @@
 All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.0] - 2026-10-01
+### Added
+- Created `database.h` and `database.cpp` to separate the entire SQLite 3 persistence layer.
+- Created `dsa_manager.h` and `dsa_manager.cpp` organizing all 10 DSA syllabus modules in one place under `DSAManager`.
+- Implemented static array-based Stack (`ArrayStack`) for Module VIII (LIFO cancellation undo).
+- Implemented circular array-based Queue (`ArrayQueue`) for Module IX (FIFO waiting list with auto-promotion).
+- Implemented word tokenization (`tokenizeRoute`) and character frequency (`countCharFrequency`) for Module V.
+- Integrated `std::set` (unique stations) and `std::pair` (train summaries) for Module X.
+
+### Changed
+- Refactored `main.cpp` into a clean, concise application driver (~80 lines) coordinating Database and DSAManager.
+- Updated `build.bat`, `Makefile`, and CI workflows to compile modular components.
+
+---
+
 ## [2.1.0] - 2026-10-01
 ### Changed
 - Streamlined `main.cpp` into a focused, pure standard C++11 implementation strictly aligned with the 10 syllabus modules.

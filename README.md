@@ -169,23 +169,25 @@ CREATE TABLE IF NOT EXISTS waiting_list (
 railway-ticket-reservation-cpp/
 ├── .github/
 │   ├── ISSUE_TEMPLATE/
-│   │   ├── bug_report.md       # Pre-formatted bug report issue template
-│   │   └── feature_request.md  # Idea and algorithm proposal template
-│   ├── pull_request_template.md # Contribution PR checklist
+│   │   ├── bug_report.md          # Pre-formatted bug report issue template
+│   │   └── feature_request.md     # Idea and algorithm proposal template
+│   ├── pull_request_template.md    # Contribution PR checklist
 │   └── workflows/
-│       └── build.yml           # Automated multi-platform CI build pipeline
+│       └── build.yml              # Automated multi-platform CI build pipeline
+├── database.h / database.cpp      # Completely isolated SQLite 3 persistence layer
+├── dsa_manager.h / dsa_manager.cpp# Unified DSA engine implementing syllabus Modules I through X & DSAManager
+├── main.cpp                       # Modular entry-point application driver
 ├── web/
-│   └── index.html              # Modern responsive Single Page App (HTML5/CSS3/JS)
-├── main.cpp                    # Complete, all-in-one C++ application with detailed comments
-├── sqlite3.c / sqlite3.h       # Official SQLite 3 amalgamation C source
-├── run.bat                     # Single-click Windows compile & launch script
-├── build.bat                   # Single-command Windows build script
-├── Makefile                    # Single-command Linux/macOS build script
-├── CHANGELOG.md                # Semantic versioning release history
-├── CONTRIBUTING.md             # Contribution guidelines & coding standards
-├── CODE_OF_CONDUCT.md          # Contributor Covenant Code of Conduct
-├── LICENSE                     # MIT Open-Source License
-└── README.md                   # Project documentation
+│   └── index.html                 # Modern responsive Single Page App (HTML5/CSS3/JS)
+├── sqlite3.c / sqlite3.h          # Official SQLite 3 amalgamation C source
+├── run.bat                        # Single-click Windows compile & launch script
+├── build.bat                      # Single-command Windows build script
+├── Makefile                       # Single-command Linux/macOS build script
+├── CHANGELOG.md                   # Semantic versioning release history
+├── CONTRIBUTING.md                # Contribution guidelines & coding standards
+├── CODE_OF_CONDUCT.md             # Contributor Covenant Code of Conduct
+├── LICENSE                        # MIT Open-Source License
+└── README.md                      # Project documentation
 ```
 
 ---

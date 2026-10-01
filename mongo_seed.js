@@ -1,10 +1,11 @@
 // =============================================================================
-// MongoDB Shell Initialization Script (mongosh compatible)
-// Database: railway_reservation
-// Usage: mongosh railway_reservation mongo_seed.js
+// MongoDB Atlas Initialization Script (mongosh compatible)
+// Database: datadb
+// Cluster:  cluster0.xhjfpv2.mongodb.net
+// Usage:    mongosh "mongodb+srv://system:system@cluster0.xhjfpv2.mongodb.net/datadb?appName=Cluster0" mongo_seed.js
 // =============================================================================
 
-use('railway_reservation');
+use('datadb');
 
 // 1. Reset Collections
 db.trains.drop();
@@ -29,4 +30,4 @@ db.passengers.insertMany([
   { "pnr": 1001, "name": "John Doe", "age": 25, "gender": "M", "train_no": 10101, "seat_no": 1, "travel_date": { "day": 15, "month": 11, "year": 2026 }, "status": "CONFIRMED", "concession": "GENERAL", "fare_paid": 1500.00 }
 ]);
 
-print('>>> MongoDB railway_reservation collections loaded successfully!');
+print('>>> Successfully synchronized to MongoDB Atlas database: datadb');

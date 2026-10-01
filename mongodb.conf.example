@@ -1,0 +1,4 @@
+# MongoDB Atlas Configuration Template
+# Copy this file to mongodb.conf and set your credentials
+MONGODB_URI=mongodb+srv://<username>:<password>@cluster0.xhjfpv2.mongodb.net/datadb?appName=Cluster0
+MONGODB_DATABASE=datadb

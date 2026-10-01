@@ -377,8 +377,38 @@ bool dbDeleteWaiting(int waitId) {
 
 // ============================================================================
 // MONGOSH COMPATIBLE SCRIPT GENERATION (mongo_seed.js)
-// Generates standard MongoDB Shell JavaScript commands to load into MongoDB
 // ============================================================================
+// MONGODB ATLAS CONFIGURATION & SCRIPT GENERATION
+// Target Database: datadb | Cluster: cluster0.xhjfpv2.mongodb.net
+// ============================================================================
+
+string dbGetAtlasUri() {
+    ifstream fin("mongodb.conf");
+    if (fin.is_open()) {
+        string line;
+        while (getline(fin, line)) {
+            if (line.find("MONGODB_URI=") == 0) {
+                return line.substr(12);
+            }
+        }
+        fin.close();
+    }
+    return "mongodb+srv://system:system@cluster0.xhjfpv2.mongodb.net/datadb?appName=Cluster0";
+}
+
+string dbGetDatabaseName() {
+    ifstream fin("mongodb.conf");
+    if (fin.is_open()) {
+        string line;
+        while (getline(fin, line)) {
+            if (line.find("MONGODB_DATABASE=") == 0) {
+                return line.substr(17);
+            }
+        }
+        fin.close();
+    }
+    return "datadb";
+}
 
 bool dbExportMongoScript(const string& scriptFileName) {
     vector<Train> trains;
@@ -388,13 +418,17 @@ bool dbExportMongoScript(const string& scriptFileName) {
     dbLoadPassengers(passengers);
     dbLoadWaiting(waiting);
 
+    string dbName = dbGetDatabaseName();
+    string atlasUri = dbGetAtlasUri();
+
     stringstream ss;
     ss << "// =============================================================================\n"
-       << "// MongoDB Shell Initialization Script (mongosh compatible)\n"
-       << "// Database: railway_reservation\n"
-       << "// Usage: mongosh railway_reservation " << scriptFileName << "\n"
+       << "// MongoDB Atlas Initialization Script (mongosh compatible)\n"
+       << "// Database: " << dbName << "\n"
+       << "// Cluster:  cluster0.xhjfpv2.mongodb.net\n"
+       << "// Usage:    mongosh \"" << atlasUri << "\" " << scriptFileName << "\n"
        << "// =============================================================================\n\n"
-       << "use('railway_reservation');\n\n"
+       << "use('" << dbName << "');\n\n"
        << "// 1. Reset Collections\n"
        << "db.trains.drop();\n"
        << "db.passengers.drop();\n"
@@ -460,6 +494,25 @@ bool dbExportMongoScript(const string& scriptFileName) {
         ss << "]);\n\n";
     }
 
-    ss << "print('>>> MongoDB railway_reservation collections loaded successfully!');\n";
+    ss << "print('>>> Successfully synchronized to MongoDB Atlas database: " << dbName << "');\n";
     return writeFileContent(scriptFileName, ss.str());
 }
+
+bool dbSyncToAtlas() {
+    dbExportMongoScript("mongo_seed.js");
+
+    string mongoshCmd = "mongosh";
+    ifstream testMongosh("G:\\mongosh-2.10.0-win32-x64\\mongosh-2.10.0-win32-x64\\bin\\mongosh.exe");
+    if (testMongosh.is_open()) {
+        mongoshCmd = "\"G:\\mongosh-2.10.0-win32-x64\\mongosh-2.10.0-win32-x64\\bin\\mongosh.exe\"";
+        testMongosh.close();
+    }
+
+    string uri = dbGetAtlasUri();
+    string cmd = mongoshCmd + " \"" + uri + "\" mongo_seed.js";
+    cout << "\n[MongoDB Atlas Sync] Connecting to cluster: cluster0.xhjfpv2.mongodb.net (database: "
+         << dbGetDatabaseName() << ")...\n";
+    int ret = system(cmd.c_str());
+    return (ret == 0);
+}
+

@@ -18,6 +18,8 @@
 # Local Toolchains & Environments
 w64devkit/
 .env
+mongodb.conf
+*.conf
 
 # Editor & IDE Directories
 .vscode/

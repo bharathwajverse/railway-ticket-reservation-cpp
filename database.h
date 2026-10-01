@@ -33,4 +33,9 @@ bool dbLoadWaiting(std::vector<WaitingEntry>& waitingList);
 // MongoDB Shell Script Generation (mongosh compatible)
 bool dbExportMongoScript(const std::string& scriptFileName = "mongo_seed.js");
 
+// MongoDB Atlas Integration (Remote datadb Cluster)
+std::string dbGetAtlasUri();
+std::string dbGetDatabaseName();
+bool dbSyncToAtlas();
+
 #endif // DATABASE_H

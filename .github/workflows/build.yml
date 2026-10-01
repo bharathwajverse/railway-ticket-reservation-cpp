@@ -15,11 +15,26 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Build Application
-        run: g++ -std=c++11 -Wall -Wextra -IDSA/include -Idatabase/include app/main.cpp DSA/src/dsa_manager.cpp database/src/database.cpp -o railway
+      - name: Build railway_cli
+        run: |
+          mkdir -p backend/database/data
+          g++ -std=c++17 -Wall -Wextra \
+            -Ibackend/include -Ibackend/dsa -Ibackend/database -Ibackend/src \
+            backend/src/main.cpp backend/src/menu.cpp \
+            backend/dsa/*.cpp backend/database/*.cpp \
+            -o backend/railway_cli
+
+      - name: Build railway_api
+        run: |
+          g++ -std=c++17 -Wall -Wextra \
+            -Ibackend/include -Ibackend/dsa -Ibackend/database -Ibackend/api \
+            backend/api/server.cpp backend/api/routes.cpp \
+            backend/dsa/*.cpp backend/database/*.cpp \
+            -lpthread \
+            -o backend/railway_api
 
       - name: Test Execution
-        run: echo "0" | ./railway
+        run: echo "0" | ./backend/railway_cli
 
   build-windows:
     name: Build on Windows
@@ -38,11 +53,26 @@ jobs:
           update: false
           install: mingw-w64-ucrt-x86_64-gcc
 
-      - name: Compile Application
-        run: g++ -std=c++11 -Wall -Wextra -IDSA/include -Idatabase/include app/main.cpp DSA/src/dsa_manager.cpp database/src/database.cpp -o railway.exe
+      - name: Build railway_cli
+        run: |
+          mkdir -p backend/database/data
+          g++ -std=c++17 -Wall -Wextra \
+            -Ibackend/include -Ibackend/dsa -Ibackend/database -Ibackend/src \
+            backend/src/main.cpp backend/src/menu.cpp \
+            backend/dsa/*.cpp backend/database/*.cpp \
+            -o backend/railway_cli.exe
+
+      - name: Build railway_api
+        run: |
+          g++ -std=c++17 -Wall -Wextra \
+            -Ibackend/include -Ibackend/dsa -Ibackend/database -Ibackend/api \
+            backend/api/server.cpp backend/api/routes.cpp \
+            backend/dsa/*.cpp backend/database/*.cpp \
+            -lws2_32 \
+            -o backend/railway_api.exe
 
       - name: Test Run
-        run: echo "0" | ./railway.exe
+        run: echo "0" | ./backend/railway_cli.exe
 
   build-macos:
     name: Build on macOS
@@ -51,8 +81,23 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Compile Application
-        run: clang++ -std=c++11 -Wall -Wextra -IDSA/include -Idatabase/include app/main.cpp DSA/src/dsa_manager.cpp database/src/database.cpp -o railway
+      - name: Build railway_cli
+        run: |
+          mkdir -p backend/database/data
+          clang++ -std=c++17 -Wall -Wextra \
+            -Ibackend/include -Ibackend/dsa -Ibackend/database -Ibackend/src \
+            backend/src/main.cpp backend/src/menu.cpp \
+            backend/dsa/*.cpp backend/database/*.cpp \
+            -o backend/railway_cli
+
+      - name: Build railway_api
+        run: |
+          clang++ -std=c++17 -Wall -Wextra \
+            -Ibackend/include -Ibackend/dsa -Ibackend/database -Ibackend/api \
+            backend/api/server.cpp backend/api/routes.cpp \
+            backend/dsa/*.cpp backend/database/*.cpp \
+            -lpthread \
+            -o backend/railway_api
 
       - name: Test Run
-        run: echo "0" | ./railway
+        run: echo "0" | ./backend/railway_cli

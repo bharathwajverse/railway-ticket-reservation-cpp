@@ -3,6 +3,16 @@
 All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.5.0] - 2026-10-01
+### Changed
+- Reorganized codebase into professional directories: `include/` (headers), `src/` (implementation), and `scripts/` (Atlas sync utility).
+- Removed obsolete SQLite amalgamation files (`sqlite3.c`, `sqlite3.h`, `sqlite3.o`, `railway.db`) and local ticket receipt dumps.
+- Updated compiler include paths (`-Iinclude`) in `build.bat`, `Makefile`, and GitHub Actions CI workflow.
+- Added root launcher `sync_to_atlas.bat` delegating to `scripts/sync_to_atlas.bat`.
+- Updated repository documentation (`README.md`) directory tree.
+
+---
+
 ## [2.4.0] - 2026-10-01
 ### Added
 - Configured MongoDB Atlas cluster integration (`cluster0.xhjfpv2.mongodb.net`) targeting database `datadb`.

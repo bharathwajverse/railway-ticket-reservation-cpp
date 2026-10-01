@@ -1,6 +1,6 @@
 # Contributing to Railway Ticket Reservation System
 
-Thank you for your interest in contributing! This project is an open-source, menu-driven C++11 educational railway reservation system backed by SQLite.
+Thank you for your interest in contributing! This project is an open-source, menu-driven C++11 educational railway reservation system backed by MongoDB Document storage.
 
 ---
 
@@ -27,8 +27,8 @@ Please read and follow our [Code of Conduct](CODE_OF_CONDUCT.md) in all project 
 2. **Adhere to the Project Constraints:**
    - Standard: C++11.
    - Paradigm: Procedural with `struct` and functions (no complex class hierarchies).
-   - Only standard containers: `vector`, `queue`, `map`, `stack`, `string`.
-   - All SQL logic must remain encapsulated within SQLite database routines using prepared statements.
+   - Only standard containers: `vector`, `queue`, `map`, `stack`, `string`, `set`.
+   - All persistence logic must remain encapsulated within the MongoDB database layer (`database.h` / `database.cpp`).
    - Code must compile with `-Wall -Wextra` without warnings.
 3. **Commit your changes:**
    ```bash

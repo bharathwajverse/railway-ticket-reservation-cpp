@@ -21,5 +21,5 @@ A clear and concise description of what you expected to happen.
 
 **Environment:**
 - OS: [e.g. Windows 11 / Ubuntu 22.04 / macOS]
-- Compiler: [e.g. GCC 14.1.0 / Clang 17]
-- SQLite version: 3.x
+- Database: MongoDB Atlas / Local JSON Collections
+

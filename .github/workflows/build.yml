@@ -15,7 +15,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Build Application
-        run: g++ -std=c++11 -Wall -Wextra main.cpp dsa_manager.cpp database.cpp -o railway
+        run: g++ -std=c++11 -Wall -Wextra -Iinclude src/main.cpp src/dsa_manager.cpp src/database.cpp -o railway
 
       - name: Test Execution
         run: echo "0" | ./railway
@@ -33,7 +33,7 @@ jobs:
           platform: x64
 
       - name: Compile Application
-        run: g++ -std=c++11 -Wall -Wextra main.cpp dsa_manager.cpp database.cpp -o railway.exe
+        run: g++ -std=c++11 -Wall -Wextra -Iinclude src/main.cpp src/dsa_manager.cpp src/database.cpp -o railway.exe
 
       - name: Test Run
         run: echo 0 | .\railway.exe

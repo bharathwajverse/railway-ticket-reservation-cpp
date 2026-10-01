@@ -1,164 +1,119 @@
-# REST API Specification
+# API Specifications & Module Interfaces
 
-The embedded C++ Winsock HTTP server exposes a lightweight REST API on port `8080`. All payloads are encoded in UTF-8 JSON.
+This document outlines the programmatic C++ interface (`include/dsa_manager.h`, `include/database.h`) and data contracts for the **Railway Ticket Reservation System (MongoDB Edition)**.
 
 ---
 
-## Base URL
-```text
-http://localhost:8080
+## 1. C++ Engine API (`include/dsa_manager.h`)
+
+The core business logic and algorithms are encapsulated within `DSAManager`:
+
+```cpp
+class DSAManager {
+public:
+    DSAManager();
+
+    // Module I - IV: Display & Search Operations
+    void displayTrains() const;
+    void searchTrainByNumber(int trainNo) const;          // O(log N) Binary Search
+    void searchTrainByDestination(const string& dest) const;// O(N) Linear Search
+    void checkSeatAvailability(int trainNo) const;       // O(1) 2D Array inspection
+
+    // Module V - VI: Booking & Cancellation
+    void bookTicket(const string& name, int age, char gender, int trainNo, const Date& travelDate);
+    void cancelConfirmedTicket(int pnr);                  // Auto-promotes queue
+    void cancelWaitingTicket(int waitId);
+    void undoLastCancellation();                          // O(1) Stack LIFO undo
+    void viewPNRStatus(int pnr) const;
+
+    // Module VII - X: Sorting & Utilities
+    void sortTrainsByFare();                              // O(N^2) Bubble Sort
+    void addNewTrain(const Train& train);
+    void viewUniqueStations() const;                      // STL std::set
+    void syncToMongoAtlas() const;                        // Atlas datadb push
+    void exportMongoScript() const;                       // mongo_seed.js export
+};
 ```
 
 ---
 
-## Endpoints Summary
+## 2. Document Persistence API (`include/database.h`)
 
-| Method | Endpoint | Description | Query Parameters / Body |
-|---|---|---|---|
-| `GET` | `/` | Serves the web dashboard (`web/index.html`) | None |
-| `GET` | `/api/trains` | List all scheduled trains and seat availability | None |
-| `GET` | `/api/seats` | Get seat occupancy array for a train | `?trainNo=<int>` |
-| `GET` | `/api/pnr` | Lookup passenger ticket details by PNR | `?pnr=<int>` |
-| `GET` | `/api/ticket` | Download or view plain-text electronic ticket slip | `?pnr=<int>` |
-| `GET` | `/api/stats` | Executive metrics (trains, bookings, revenue) | None |
-| `GET` | `/api/manifest` | Complete passenger booking manifest | None |
-| `POST` | `/api/book` | Book a ticket with age concession and seat preference | JSON Body |
-| `POST` | `/api/cancel` | Cancel a confirmed ticket by PNR | JSON Body |
+The document layer isolates local JSON persistence and Atlas synchronization:
 
----
+```cpp
+// Lifecycle
+bool dbOpen(const string& dataDir);
+void dbClose();
+void dbCreateCollections();
 
-## Endpoint Details
+// Train Collection
+bool dbInsertTrain(const Train& train);
+bool dbLoadTrains(vector<Train>& trains);
+bool dbUpdateTrainSeats(int trainNo, int availableSeats);
 
-### 1. `GET /api/trains`
-Returns an array of all active trains in the system.
+// Passenger Collection
+bool dbInsertPassenger(const Passenger& p);
+bool dbLoadPassengers(vector<Passenger>& passengers);
+bool dbUpdatePassengerStatus(int pnr, const string& status);
 
-**Response `200 OK`:**
-```json
-[
-  {
-    "trainNo": 10101,
-    "name": "Rajdhani Express",
-    "source": "Delhi",
-    "destination": "Mumbai",
-    "departure": "06:00 AM",
-    "totalSeats": 4,
-    "availableSeats": 2,
-    "fare": 1500.00
-  }
-]
+// Waiting List Collection
+bool dbInsertWaiting(const WaitingEntry& w);
+bool dbLoadWaitingList(map<int, ArrayQueue>& waitingLists);
+bool dbDeleteWaiting(int waitId);
+
+// MongoDB Atlas Export & Sync
+bool dbExportMongoSeed(const string& outputFile);
+bool dbSyncToAtlas(const string& confFile);
 ```
 
 ---
 
-### 2. `GET /api/seats?trainNo=10101`
-Returns total capacity, available count, and a 0/1 occupancy array (`0` = free, `1` = booked).
+## 3. Web UI JSON Contracts (`web/index.html`)
 
-**Response `200 OK`:**
+For the browser client preview, models conform to standard JSON contracts:
+
+### `Train` Document
 ```json
 {
-  "trainNo": 10101,
-  "totalSeats": 4,
-  "availableSeats": 2,
-  "seats": [1, 1, 0, 0]
+  "_id": "6701a1b2c3d4e5f600000001",
+  "train_no": 10101,
+  "name": "Rajdhani Express",
+  "source": "Delhi",
+  "destination": "Mumbai",
+  "departure": "06:00 AM",
+  "total_seats": 4,
+  "available_seats": 4,
+  "fare": 1500.00
 }
 ```
 
----
-
-### 3. `POST /api/book`
-Books a ticket for a passenger. If seats are available, allocates the selected seat (or auto-assigns if `seatNo` is `-1`) and computes the age-based concession. If the train is full, adds the passenger to the FIFO waiting list.
-
-**Request Body:**
+### `Passenger` Document
 ```json
 {
-  "trainNo": 10101,
-  "name": "Aarav Sharma",
-  "age": 65,
+  "_id": "6701a1b2c3d4e5f600000101",
+  "pnr": 1001,
+  "name": "John Doe",
+  "age": 25,
   "gender": "M",
-  "dateStr": "2026-11-15",
-  "seatNo": 3
-}
-```
-
-**Response `200 OK` (Confirmed):**
-```json
-{
-  "success": true,
+  "train_no": 10101,
+  "seat_no": 1,
+  "date": "15/10/2026",
   "status": "CONFIRMED",
-  "pnr": 1009,
-  "name": "Aarav Sharma",
-  "age": 65,
-  "seatNo": 3,
-  "concession": "SENIOR CITIZEN (40% OFF)",
-  "farePaid": 900.00
+  "concession": "NONE",
+  "fare_paid": 1500.00
 }
 ```
 
-**Response `200 OK` (Waitlisted):**
+### `WaitingEntry` Document
 ```json
 {
-  "success": true,
-  "status": "WAITING",
-  "name": "Aarav Sharma",
-  "waitPos": 1
-}
-```
-
----
-
-### 4. `GET /api/pnr?pnr=1009`
-Retrieves ticket status and travel details by unique PNR number.
-
-**Response `200 OK`:**
-```json
-{
-  "found": true,
-  "pnr": 1009,
-  "name": "Aarav Sharma",
-  "age": 65,
-  "gender": "M",
-  "trainNo": 10101,
-  "seatNo": 3,
-  "date": "15/11/2026",
-  "status": "CONFIRMED",
-  "concession": "SENIOR CITIZEN (40% OFF)",
-  "farePaid": 900.00
-}
-```
-
----
-
-### 5. `POST /api/cancel`
-Cancels an active confirmed ticket, marks it `CANCELLED` in SQLite, pushes to the undo stack, frees the coach seat, and automatically promotes the head of the FIFO waiting queue if one exists.
-
-**Request Body:**
-```json
-{
-  "pnr": 1009
-}
-```
-
-**Response `200 OK`:**
-```json
-{
-  "success": true,
-  "message": "Seat is now free for booking."
-}
-```
-
----
-
-### 6. `GET /api/stats`
-Returns aggregate system analytics for executive dashboard cards.
-
-**Response `200 OK`:**
-```json
-{
-  "totalTrains": 4,
-  "totalBookings": 8,
-  "confirmedBookings": 6,
-  "cancelledBookings": 2,
-  "totalWaitlisted": 0,
-  "totalRevenue": 8250.00
+  "_id": "6701a1b2c3d4e5f600000201",
+  "wait_id": 1,
+  "passenger_name": "Alice Smith",
+  "age": 30,
+  "gender": "F",
+  "train_no": 10101,
+  "date": "15/10/2026"
 }
 ```

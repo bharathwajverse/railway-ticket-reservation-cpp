@@ -1,6 +1,6 @@
 # Compiler and Flags
 CXX ?= g++
-CXXFLAGS = -std=c++11 -Wall -Wextra -O2
+CXXFLAGS = -std=c++11 -Wall -Wextra -O2 -Iinclude
 
 # Detect OS for binary name and clean command
 ifeq ($(OS),Windows_NT)
@@ -14,7 +14,7 @@ else
 endif
 
 # Source Files & Objects
-SRCS = main.cpp dsa_manager.cpp database.cpp
+SRCS = src/main.cpp src/dsa_manager.cpp src/database.cpp
 OBJS = $(SRCS:.cpp=.o)
 
 # Default target
@@ -26,7 +26,7 @@ $(TARGET): $(OBJS)
 	@echo "Build successful: $(TARGET)"
 
 # Compile C++ files
-%.o: %.cpp
+src/%.o: src/%.cpp
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 # Run application
@@ -35,4 +35,8 @@ run: $(TARGET)
 
 # Clean build artifacts
 clean:
-	$(RM) *.o $(TARGET)
+ifeq ($(OS),Windows_NT)
+	-del /Q /F src\*.o $(TARGET) 2>nul
+else
+	$(RM) src/*.o $(TARGET)
+endif

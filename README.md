@@ -157,22 +157,32 @@ railway-ticket-reservation-cpp/
 │   ├── ISSUE_TEMPLATE/
 │   │   ├── bug_report.md          # Pre-formatted bug report issue template
 │   │   └── feature_request.md     # Idea and algorithm proposal template
-│   ├── pull_request_template.md    # Contribution PR checklist
+│   ├── pull_request_template.md   # Contribution PR checklist
 │   └── workflows/
 │       └── build.yml              # Automated multi-platform CI build pipeline
+├── include/                       # C++ Header declarations
+│   ├── database.h                 # MongoDB document storage interface
+│   └── dsa_manager.h              # 10 Syllabus Modules & DSAManager definitions
+├── src/                           # C++ Implementation source files
+│   ├── database.cpp               # MongoDB JSON document persistence layer
+│   ├── dsa_manager.cpp            # Modules I - X DSA implementation
+│   └── main.cpp                   # Clean CLI entry-point driver
 ├── mongodb_data/                  # MongoDB NoSQL Document Collections (JSON)
 │   ├── trains.json                # Trains document collection
 │   ├── passengers.json            # Confirmed passengers document collection
 │   └── waiting_list.json          # Waiting queue document collection
 ├── mongo_seed.js                  # Auto-generated mongosh shell initialization script
-├── database.h / database.cpp      # Completely isolated MongoDB document persistence layer
-├── dsa_manager.h / dsa_manager.cpp# Unified DSA engine implementing syllabus Modules I through X & DSAManager
-├── main.cpp                       # Modular entry-point application driver
+├── scripts/
+│   └── sync_to_atlas.bat          # MongoDB Atlas datadb synchronization batch script
+├── docs/                          # Architecture & API documentation
+│   ├── API.md                     # DSA and Database API specifications
+│   └── ARCHITECTURE.md            # System design and dataflow
 ├── web/
 │   └── index.html                 # Modern responsive Single Page App (HTML5/CSS3/JS)
 ├── run.bat                        # Single-click Windows compile & launch script
-├── build.bat                      # Single-command Windows build script
-├── Makefile                       # Single-command Linux/macOS build script
+├── build.bat                      # Windows build script (-Iinclude src/*.cpp)
+├── sync_to_atlas.bat              # Quick Atlas sync launcher
+├── Makefile                       # Linux/macOS build script
 ├── CHANGELOG.md                   # Semantic versioning release history
 ├── CONTRIBUTING.md                # Contribution guidelines & coding standards
 ├── CODE_OF_CONDUCT.md             # Contributor Covenant Code of Conduct
